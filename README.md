@@ -1,5 +1,9 @@
 # INDUS AD DEVKIT
 
+![Seven-camera and Ouster OS1-128 LiDAR configuration](docs/assets/car_seven_cameras_lidar_corrected.png)
+
+Seven-camera and Ouster OS1-128 LiDAR configuration. Camera positions and orientations are plotted from supplied parameters; vehicle silhouette is illustrative, and LiDAR positioning is estimated and unverified.
+
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 ![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
 ![Platform: POSIX](https://img.shields.io/badge/platform-POSIX-lightgrey)
