@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 from collections.abc import Callable
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -37,9 +38,11 @@ from dataset_devkit.validation import validate_dataset as validate_output
 from decoded_v2_fixture import decoded_source_config, write_decoded_fixture
 from indus_ad_fixture import (
     IndusAdFixture,
+    refreshed_tree,
     write_executable_indus_ad_fixture,
     write_indus_ad_fixture,
 )
+from published_sensor_fixture import rewrite_published_tables
 
 
 def _decoded_config(base: GlobalConfig, tmp_path: Path) -> GlobalConfigV2:
@@ -134,11 +137,27 @@ def test_prepare_source_dispatches_integrated_indus_backend(
     assert decoded_called is False
 
 
+@pytest.mark.parametrize("published", [False, True])
 def test_integrated_backend_builds_and_validates_tiny_selected_labels(
-    tmp_path: Path, config_factory: Callable[[], GlobalConfig]
+    tmp_path: Path, config_factory: Callable[[], GlobalConfig], published: bool
 ) -> None:
     config, _ = _indus_config(config_factory(), tmp_path)
     fixture = write_executable_indus_ad_fixture(tmp_path / "executable-indus")
+    if published:
+        rewrite_published_tables(fixture.root)
+        fixture = refreshed_tree(
+            replace(
+                fixture,
+                source=fixture.source.model_copy(
+                    update={
+                        "gnss_channel": "gnss",
+                        "gnss_time_basis": "time_offset_ns",
+                        "calibrated_ego_frame": "front_camera_x_forward_y_left_z_up",
+                        "intrinsic_image_transform": "resize",
+                    }
+                ),
+            )
+        )
     annotations = tmp_path / "empty-annotations.jsonl"
     annotations.write_text("")
     config = config.model_copy(

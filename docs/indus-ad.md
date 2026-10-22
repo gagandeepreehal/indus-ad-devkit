@@ -9,6 +9,31 @@ Schema `2.1` selects `source.type: "indus_ad_hf"` and
 pins the source revision. Six untilted cameras are selected by default;
 `cam_front_tilted` is optional.
 
+The current example pins `ee0e1754964f6af000625fb42d854565b39fec36`, including
+the producer's `calibrated_extrinsics` overlay. Its sensor policy is explicit:
+`gnss_channel: "gnss"`, `gnss_time_basis: "time_offset_ns"`,
+`calibrated_ego_frame: "front_camera_x_forward_y_left_z_up"`, and
+`intrinsic_image_transform: "resize"`. The publisher selected the live `gnss`
+stream and its embedded recording-relative time on 23 October 2026, confirmed a
+pure 1920x1080-to-1280x720 resize without cropping, and confirmed the front-camera
+and GNSS pose origin coincide. Pose Euler angles retain the devkit's documented
+right-handed active XYZ convention; this is not an independent sensor survey.
+
+The corrected camera matrices map optical coordinates to a left-handed
+front-reference frame. The adapter explicitly swaps its X/Y basis into the
+right-handed export ego frame (X forward, Y left, Z up), converts millimetre
+translations to metres, then forms a proper rotation. It verifies the model ID,
+camera identity, units, declared axes, inverse matrices, and static per-camera
+calibration before deduplication. It never falls back to the unverified legacy
+`fields_json.extrinsic` vectors. Intrinsics are scaled only under the explicit
+pure-resize policy; distortion coefficients remain unchanged.
+
+Published GNSS tables require an explicit channel and time basis. Streams are
+filtered before interpolation and never merged. Sensor uncertainty/quality fields
+are retained. Invalid coordinate-bearing samples remain invalid interpolation
+barriers. Unknown source versions, duplicate selected timestamps, missing selected
+times, and absolute-time fields are rejected.
+
 The adapter verifies agreement among metadata, video Viewer, video integrity, and
 privacy-release controls. Acquired video bytes must match both the pinned tree
 identity and the integrity-manifest SHA-256, including when reused from cache.
@@ -61,7 +86,7 @@ Run the control-only compatibility gate with:
 ```bash
 python tools/check_indus_ad_contract.py \
   --repo-id gagandeepreehal/indus-ad \
-  --revision 2d46a81376ded440506bd1646c0a5197589ba27b
+  --revision ee0e1754964f6af000625fb42d854565b39fec36
 ```
 
 The gate rejects video, archive, and per-recording sensor-table downloads.

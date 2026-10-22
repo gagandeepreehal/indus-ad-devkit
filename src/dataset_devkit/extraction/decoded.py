@@ -6,7 +6,7 @@ import json
 import math
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -14,7 +14,7 @@ from typing import Any, Protocol, cast
 import av
 import pyarrow.parquet as pq
 
-from dataset_devkit.config import CameraName
+from dataset_devkit.config import CameraName, GnssChannel, GnssTimeBasis
 from dataset_devkit.extraction.decoded_gnss import (
     interpolate_privacy_gnss,
     parse_privacy_gnss,
@@ -33,6 +33,7 @@ from dataset_devkit.extraction.models import (
     RecordingExtractionResult,
     TimestampObservation,
 )
+from dataset_devkit.extraction.published_calibration import published_camera_extrinsic
 from dataset_devkit.extraction.service import OwnedRecordingExtraction
 from dataset_devkit.extraction.staging import (
     create_staging_invocation,
@@ -82,6 +83,15 @@ _PRODUCTION_CALIBRATION_REQUIRED = {
     "camera_index",
     "intrinsic_json",
     "extrinsic_json",
+}
+_PUBLISHED_CALIBRATION_COLUMNS = {
+    "schema_version",
+    "recording_id",
+    "kind",
+    "key",
+    "time_of_day_ns",
+    "time_offset_ns",
+    "fields_json",
 }
 
 
@@ -140,11 +150,7 @@ def _read_rows(path: Path, label: str) -> tuple[set[str], list[dict[str, object]
 
 
 def _integer(value: object, label: str, *, nonnegative: bool = True) -> int:
-    if (
-        not isinstance(value, int)
-        or isinstance(value, bool)
-        or (nonnegative and value < 0)
-    ):
+    if not isinstance(value, int) or isinstance(value, bool) or (nonnegative and value < 0):
         raise StructuralExtractionError(f"decoded {label} must be an integer")
     return value
 
@@ -185,26 +191,18 @@ def _camera_rows(bundle: _DecodedBundle) -> tuple[_CameraRow, ...]:
             raise StructuralExtractionError("decoded camera frame schema is unsupported")
         for row in rows:
             if row.get("recording_id") != bundle.entry.recording_id:
-                raise StructuralExtractionError(
-                    "decoded camera frame recording identity differs"
-                )
-            camera = _camera(
-                row.get("camera_name" if simple else "source_camera_name")
-            )
+                raise StructuralExtractionError("decoded camera frame recording identity differs")
+            camera = _camera(row.get("camera_name" if simple else "source_camera_name"))
             frame_index = _integer(
                 row.get("frame_index" if simple else "packet_index"), "frame index"
             )
             if frame_index != next_index[camera]:
-                raise StructuralExtractionError(
-                    "decoded camera frame indices are not contiguous"
-                )
+                raise StructuralExtractionError("decoded camera frame indices are not contiguous")
             if production:
                 source_index = _integer(row.get("camera_index"), "camera index")
                 previous_source_index = source_indexes.setdefault(camera, source_index)
                 if source_index != previous_source_index:
-                    raise StructuralExtractionError(
-                        "decoded camera index changes within a camera"
-                    )
+                    raise StructuralExtractionError("decoded camera index changes within a camera")
             offset = _integer(
                 row.get("recording_offset_ns" if simple else "camera_time_offset_ns"),
                 "camera recording offset",
@@ -289,24 +287,71 @@ def _calibration_from_values(
 
 def _calibrations(
     bundle: _DecodedBundle,
+    *,
+    use_published_calibration: bool = False,
 ) -> dict[CameraName, CameraCalibration]:
     result: dict[CameraName, CameraCalibration] = {}
+    overlays: dict[CameraName, object] = {}
     for artifact in bundle.entry.artifacts_of("calibration"):
         columns, rows = _read_rows(bundle.path(artifact.path), "calibration")
         simple = columns == _SIMPLE_CALIBRATION_COLUMNS
         production = columns >= _PRODUCTION_CALIBRATION_REQUIRED
-        if not simple and not production:
+        if columns == _PUBLISHED_CALIBRATION_COLUMNS:
+            raise StructuralExtractionError(
+                "legacy calibration has no verified calibrated_extrinsics; pin the newer overlay"
+            )
+        published = columns == _PUBLISHED_CALIBRATION_COLUMNS | {"calibrated_extrinsics"}
+        if not simple and not production and not published:
             raise StructuralExtractionError("decoded calibration schema is unsupported")
         for row in rows:
             if row.get("recording_id") != bundle.entry.recording_id:
-                raise StructuralExtractionError(
-                    "decoded calibration recording identity differs"
+                raise StructuralExtractionError("decoded calibration recording identity differs")
+            if published:
+                if not use_published_calibration:
+                    raise StructuralExtractionError(
+                        "published calibration requires explicit calibrated_ego_frame"
+                    )
+                if (
+                    row.get("schema_version") != 1
+                    or isinstance(row.get("schema_version"), bool)
+                    or row.get("kind") != "calibration"
+                ):
+                    raise StructuralExtractionError(
+                        "decoded calibration row version/kind is unsupported"
+                    )
+                key = row.get("key")
+                parts = key.split(":") if isinstance(key, str) else []
+                if len(parts) != 3 or any(not part.isdecimal() for part in parts[1:]):
+                    raise StructuralExtractionError("decoded calibration key is invalid")
+                camera = _camera(parts[0])
+                payload = _json_mapping(row.get("fields_json"), "calibration")
+                native_intrinsic = payload.get("intrinsic")
+                if not isinstance(native_intrinsic, Mapping):
+                    raise StructuralExtractionError(
+                        "decoded calibration requires an intrinsic object"
+                    )
+                overlay = row["calibrated_extrinsics"]
+                if camera in overlays and overlays[camera] != overlay:
+                    raise StructuralExtractionError("published calibration changes within a camera")
+                if camera not in overlays:
+                    native_extrinsic = published_camera_extrinsic(overlay, camera=camera)
+                    overlays[camera] = overlay
+                else:
+                    native_extrinsic = result[camera].extrinsic
+                calibration = _calibration_from_values(
+                    native_intrinsic,
+                    {
+                        "rotation_vector": list(native_extrinsic.rotation_vector),
+                        "translation_vector": list(native_extrinsic.translation_vector),
+                    },
                 )
+                if camera in result and result[camera] != calibration:
+                    raise StructuralExtractionError("decoded calibration changes within a camera")
+                result[camera] = calibration
+                continue
             camera = _camera(row.get("camera_name" if simple else "camera"))
             if camera in result:
-                raise StructuralExtractionError(
-                    "decoded calibration contains a duplicate camera"
-                )
+                raise StructuralExtractionError("decoded calibration contains a duplicate camera")
             if simple:
                 intrinsic: Mapping[str, Any] = row
                 extrinsic: Mapping[str, Any] = row
@@ -351,6 +396,10 @@ class DecodedRecordingExtractor:
         target_fps: Fraction | float | str,
         tolerance_ns: int,
         staging_root: Path,
+        gnss_channel: GnssChannel | None = None,
+        gnss_time_basis: GnssTimeBasis | None = None,
+        use_published_calibration: bool = False,
+        resize_intrinsics: bool = False,
     ) -> None:
         self.target_fps = (
             target_fps if isinstance(target_fps, Fraction) else Fraction(str(target_fps))
@@ -361,10 +410,12 @@ class DecodedRecordingExtractor:
             raise ValueError("tolerance_ns must be nonnegative")
         self.tolerance_ns = tolerance_ns
         self.staging_root = staging_root
+        self.gnss_channel = gnss_channel
+        self.gnss_time_basis = gnss_time_basis
+        self.use_published_calibration = use_published_calibration
+        self.resize_intrinsics = resize_intrinsics
 
-    def extract_owned(
-        self, bundle: _DecodedBundle
-    ) -> OwnedRecordingExtraction:
+    def extract_owned(self, bundle: _DecodedBundle) -> OwnedRecordingExtraction:
         rows = _camera_rows(bundle)
         selected_cameras = tuple(video.camera for video in bundle.entry.videos)
         if len(selected_cameras) != len(set(selected_cameras)):
@@ -375,12 +426,44 @@ class DecodedRecordingExtractor:
             by_camera[row.camera].append(row)
         for video in bundle.entry.videos:
             if video.frame_count is None or len(by_camera[video.camera]) != video.frame_count:
-                raise StructuralExtractionError(
-                    f"decoded frame count differs for {video.camera}"
-                )
-        calibrations = _calibrations(bundle)
+                raise StructuralExtractionError(f"decoded frame count differs for {video.camera}")
+        calibrations = _calibrations(
+            bundle, use_published_calibration=self.use_published_calibration
+        )
         if set(selected_cameras) - set(calibrations):
             raise StructuralExtractionError("decoded calibration is missing a selected camera")
+        if self.resize_intrinsics:
+            for camera in selected_cameras:
+                dimensions = {(row.width, row.height) for row in by_camera[camera]}
+                if len(dimensions) != 1:
+                    raise StructuralExtractionError(
+                        "camera image dimensions change within recording"
+                    )
+                width, height = next(iter(dimensions))
+                calibration = calibrations[camera]
+                intrinsic = calibration.intrinsic
+                if (
+                    intrinsic.width <= 0
+                    or intrinsic.height <= 0
+                    or not math.isclose(
+                        width * intrinsic.height, height * intrinsic.width, rel_tol=1e-9
+                    )
+                ):
+                    raise StructuralExtractionError("pure-resize intrinsic aspect ratio differs")
+                sx, sy = width / intrinsic.width, height / intrinsic.height
+                calibrations[camera] = replace(
+                    calibration,
+                    intrinsic=replace(
+                        intrinsic,
+                        width=float(width),
+                        height=float(height),
+                        focal_length_x=intrinsic.focal_length_x * sx,
+                        focal_length_y=intrinsic.focal_length_y * sy,
+                        optical_center_x=intrinsic.optical_center_x * sx,
+                        optical_center_y=intrinsic.optical_center_y * sy,
+                        skew=intrinsic.skew * sx,
+                    ),
+                )
         for camera, calibration in calibrations.items():
             camera_rows = by_camera.get(camera, [])
             if camera in selected_cameras and any(
@@ -394,6 +477,8 @@ class DecodedRecordingExtractor:
         gnss = parse_privacy_gnss(
             bundle.path(bundle.entry.artifact("gnss").path),
             expected_recording_id=bundle.entry.recording_id,
+            channel=self.gnss_channel,
+            time_basis=self.gnss_time_basis,
         )
         offsets = sorted({row.batch_offset_ns for row in rows})
         selection = select_camera_grid(offsets, self.target_fps, self.tolerance_ns)
@@ -411,18 +496,12 @@ class DecodedRecordingExtractor:
             item.batch_timestamp_ns: item.target_timestamp_ns for item in selection.entries
         }
         ordered_offsets = sorted(
-            {
-                row.batch_offset_ns
-                for camera_rows in by_camera.values()
-                for row in camera_rows
-            }
+            {row.batch_offset_ns for camera_rows in by_camera.values() for row in camera_rows}
         )
         offset_ordinal = {offset: index for index, offset in enumerate(ordered_offsets)}
         poses: dict[int, EgoPose] = {}
         samples: list[ExtractedCameraSample] = []
-        invocation = create_staging_invocation(
-            self.staging_root, bundle.entry.recording_id
-        )
+        invocation = create_staging_invocation(self.staging_root, bundle.entry.recording_id)
         authority = invocation.authority
         if authority is None:
             rollback_staging_invocation(invocation)
@@ -556,9 +635,7 @@ class DecodedRecordingExtractor:
                     selection,
                     tuple(samples),
                     poses,
-                    _observations(
-                        tuple(row for rows in by_camera.values() for row in rows), gnss
-                    ),
+                    _observations(tuple(row for rows in by_camera.values() for row in rows), gnss),
                 ),
                 authority,
             )
@@ -566,11 +643,7 @@ class DecodedRecordingExtractor:
             try:
                 rollback_staging_invocation(invocation)
             except Exception as rollback_error:
-                cleanup_error = OwnedDirectoryCleanupError(
-                    (authority.cleanup_failure(),)
-                )
-                cleanup_error.add_note(
-                    f"rollback failed with {type(rollback_error).__name__}"
-                )
+                cleanup_error = OwnedDirectoryCleanupError((authority.cleanup_failure(),))
+                cleanup_error.add_note(f"rollback failed with {type(rollback_error).__name__}")
                 raise cleanup_error from extraction_error
             raise

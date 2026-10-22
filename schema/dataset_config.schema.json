@@ -958,6 +958,19 @@
           "type": "array",
           "uniqueItems": true
         },
+        "calibrated_ego_frame": {
+          "anyOf": [
+            {
+              "const": "front_camera_x_forward_y_left_z_up",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibrated Ego Frame"
+        },
         "cameras": {
           "items": {
             "enum": [
@@ -993,6 +1006,48 @@
             }
           ],
           "default": null
+        },
+        "gnss_channel": {
+          "anyOf": [
+            {
+              "enum": [
+                "gnss",
+                "rec_gnss"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gnss Channel"
+        },
+        "gnss_time_basis": {
+          "anyOf": [
+            {
+              "enum": [
+                "log_time_offset_ns",
+                "time_offset_ns",
+                "rec_time_offset_ns"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gnss Time Basis"
+        },
+        "intrinsic_image_transform": {
+          "default": "identity",
+          "enum": [
+            "identity",
+            "resize"
+          ],
+          "title": "Intrinsic Image Transform",
+          "type": "string"
         },
         "privacy_classification": {
           "const": "privacy_transformed",

@@ -13,6 +13,7 @@ from typing import Any, cast
 import pyarrow.parquet as pq
 from pyproj import Transformer
 
+from dataset_devkit.config import GnssChannel, GnssTimeBasis
 from dataset_devkit.extraction.errors import StructuralExtractionError
 from dataset_devkit.extraction.gnss import (
     _numeric_interpolation,
@@ -48,11 +49,17 @@ _ANONYMIZER_COLUMNS = {
     "sequence",
     "fields_json",
 }
+_PUBLISHED_COLUMNS = _ANONYMIZER_COLUMNS | {"schema_version"}
 _ALLOWED_RELATIVE_OR_CONTEXT_TIME_FIELDS = {
     "recording_offset_ns",
     "local_enu_origin_offset_ns",
     "log_time_offset_ns",
     "publish_time_offset_ns",
+    "time_offset_ns",
+    "utc_time_of_day_ns",
+    "utc_time_offset_ns",
+    "rec_time_of_day_ns",
+    "rec_time_offset_ns",
     "time_of_day_ns",
     "log_time_of_day_ns",
     "publish_time_of_day_ns",
@@ -156,8 +163,79 @@ def _quality_interpolation(
     return result
 
 
+def _normalize_messages(
+    rows: list[dict[str, object]],
+    *,
+    published: bool,
+    expected_recording_id: str,
+    channel: GnssChannel | None,
+    time_basis: GnssTimeBasis | None,
+) -> list[dict[str, object]]:
+    channels = {row.get("channel") for row in rows}
+    if not channels.issubset({"gnss", "rec_gnss"}):
+        raise StructuralExtractionError("privacy GNSS contains an unsupported channel")
+    if channel is None and len(channels) != 1:
+        raise StructuralExtractionError(
+            "privacy GNSS requires explicit gnss_channel for multiple streams"
+        )
+    if published and (channel is None or time_basis is None):
+        raise StructuralExtractionError(
+            "published GNSS requires explicit gnss_channel and gnss_time_basis"
+        )
+    if channel is not None and channel not in channels:
+        raise StructuralExtractionError("selected privacy GNSS channel is absent")
+    normalized: list[dict[str, object]] = []
+    for row in rows:
+        if row.get("recording_id") != expected_recording_id:
+            raise StructuralExtractionError(
+                "privacy GNSS recording ID differs from selected recording"
+            )
+        if published and (
+            not isinstance(row.get("schema_version"), int)
+            or isinstance(row.get("schema_version"), bool)
+            or row["schema_version"] != 1
+        ):
+            raise StructuralExtractionError("privacy GNSS schema version is unsupported")
+        if channel is not None and row["channel"] != channel:
+            continue
+        fields_json = row.get("fields_json")
+        if not isinstance(fields_json, str):
+            raise StructuralExtractionError("privacy GNSS fields JSON is invalid")
+        try:
+            fields = json.loads(fields_json)
+        except json.JSONDecodeError as error:
+            raise StructuralExtractionError("privacy GNSS fields JSON is invalid") from error
+        if not isinstance(fields, dict):
+            raise StructuralExtractionError("privacy GNSS fields JSON is invalid")
+        if "recording_id" in fields or "recording_offset_ns" in fields:
+            raise StructuralExtractionError("privacy GNSS fields JSON shadows row identity")
+        _reject_absolute_fields(fields)
+        offset = (
+            row.get("log_time_offset_ns")
+            if time_basis is None or time_basis == "log_time_offset_ns"
+            else fields.get(time_basis)
+        )
+        if published:
+            for source, target in (
+                ("position_error", "position_uncertainty"),
+                ("orientation_error", "orientation_uncertainty"),
+                ("position_type_info", "quality"),
+            ):
+                if target in fields:
+                    raise StructuralExtractionError("privacy GNSS uncertainty fields are ambiguous")
+                fields[target] = fields.get(source)
+        normalized.append(
+            {"recording_id": row["recording_id"], "recording_offset_ns": offset, **fields}
+        )
+    return normalized
+
+
 def parse_privacy_gnss(
-    path: Path, *, expected_recording_id: str
+    path: Path,
+    *,
+    expected_recording_id: str,
+    channel: GnssChannel | None = None,
+    time_basis: GnssTimeBasis | None = None,
 ) -> tuple[PrivacyGnssSample, ...]:
     """Parse a strict date-free GNSS shard without Hive partition inference."""
     if not expected_recording_id:
@@ -165,7 +243,7 @@ def parse_privacy_gnss(
     try:
         parquet = pq.ParquetFile(path)
         columns = set(parquet.schema_arrow.names)
-        if columns != _EXPECTED_COLUMNS and columns != _ANONYMIZER_COLUMNS:
+        if columns not in (_EXPECTED_COLUMNS, _ANONYMIZER_COLUMNS, _PUBLISHED_COLUMNS):
             raise StructuralExtractionError(
                 "privacy GNSS contains missing, extra, or forbidden fields"
             )
@@ -176,32 +254,14 @@ def parse_privacy_gnss(
         raise StructuralExtractionError("privacy GNSS Parquet is invalid") from error
     if not rows:
         raise StructuralExtractionError("privacy GNSS contains no rows")
-    if columns == _ANONYMIZER_COLUMNS:
-        normalized: list[dict[str, object]] = []
-        for row in rows:
-            fields_json = row.get("fields_json")
-            if not isinstance(fields_json, str):
-                raise StructuralExtractionError("privacy GNSS fields JSON is invalid")
-            try:
-                fields = json.loads(fields_json)
-            except json.JSONDecodeError as error:
-                raise StructuralExtractionError(
-                    "privacy GNSS fields JSON is invalid"
-                ) from error
-            if not isinstance(fields, dict):
-                raise StructuralExtractionError("privacy GNSS fields JSON is invalid")
-            if "recording_id" in fields or "recording_offset_ns" in fields:
-                raise StructuralExtractionError(
-                    "privacy GNSS fields JSON shadows row identity"
-                )
-            normalized.append(
-                {
-                    "recording_id": row.get("recording_id"),
-                    "recording_offset_ns": row.get("log_time_offset_ns"),
-                    **fields,
-                }
-            )
-        rows = normalized
+    if columns in (_ANONYMIZER_COLUMNS, _PUBLISHED_COLUMNS):
+        rows = _normalize_messages(
+            rows,
+            published=columns == _PUBLISHED_COLUMNS,
+            expected_recording_id=expected_recording_id,
+            channel=channel,
+            time_basis=time_basis,
+        )
 
     samples: list[PrivacyGnssSample] = []
     recording_id: str | None = None
@@ -224,24 +284,15 @@ def parse_privacy_gnss(
         origin = _int(row.get("local_enu_origin_offset_ns"), "origin offset")
         if origin != 0:
             raise StructuralExtractionError("privacy GNSS local ENU origin offset must be zero")
-        if not is_valid:
-            if any(
-                row.get(field) is not None
-                for field in (
-                    "local_enu",
-                    "enu",
-                    "lat_lon_ht",
-                    "published_horizontal_resolution_m",
-                )
-            ):
+        coordinate_fields = ("local_enu", "enu", "lat_lon_ht", "published_horizontal_resolution_m")
+        if not is_valid and any(row.get(field) is None for field in coordinate_fields):
+            if any(row.get(field) is not None for field in coordinate_fields):
                 raise StructuralExtractionError(
-                    "invalid privacy GNSS row contains published coordinates"
+                    "invalid privacy GNSS row has incomplete published coordinates"
                 )
             samples.append(
                 PrivacyGnssSample(
-                    recording_offset_ns=_int(
-                        row.get("recording_offset_ns"), "recording offset"
-                    ),
+                    recording_offset_ns=_int(row.get("recording_offset_ns"), "recording offset"),
                     is_valid=False,
                     local_east_m=None,
                     local_north_m=None,
@@ -270,9 +321,7 @@ def parse_privacy_gnss(
         orientation = _mapping(row.get("orientation"), "orientation")
         published = _mapping(row.get("enu"), "published ENU")
         lat_lon_ht = _mapping(row.get("lat_lon_ht"), "latitude/longitude/height")
-        resolution = _float(
-            row.get("published_horizontal_resolution_m"), "published resolution"
-        )
+        resolution = _float(row.get("published_horizontal_resolution_m"), "published resolution")
         if resolution != 1.0:
             raise StructuralExtractionError("privacy GNSS published resolution must be 1 metre")
         east = _float(published.get("east_m"), "published east")
@@ -284,10 +333,7 @@ def parse_privacy_gnss(
         longitude, latitude = _TO_WGS84.transform(east, north)
         published_latitude = _float(lat_lon_ht.get("latitude_deg"), "latitude")
         published_longitude = _float(lat_lon_ht.get("longitude_deg"), "longitude")
-        if (
-            abs(latitude - published_latitude) > 1e-9
-            or abs(longitude - published_longitude) > 1e-9
-        ):
+        if abs(latitude - published_latitude) > 1e-9 or abs(longitude - published_longitude) > 1e-9:
             raise StructuralExtractionError(
                 "privacy GNSS latitude/longitude differs from rounded global ENU"
             )
@@ -336,12 +382,8 @@ def _unavailable(
         before=before,
         after=after,
         fraction=None,
-        sync_gap_before_ns=(
-            None if before is None else offset_ns - before.recording_offset_ns
-        ),
-        sync_gap_after_ns=(
-            None if after is None else after.recording_offset_ns - offset_ns
-        ),
+        sync_gap_before_ns=(None if before is None else offset_ns - before.recording_offset_ns),
+        sync_gap_after_ns=(None if after is None else after.recording_offset_ns - offset_ns),
         pose_frame="recording_local_enu_v1",
         published_horizontal_resolution_m=1.0,
     )
@@ -424,12 +466,8 @@ def interpolate_privacy_gnss(
         linear(before_local_up, after_local_up),
     )
     height = linear(before_height, after_height)
-    published_east = float(
-        _round_half_away(linear(before_published_east, after_published_east))
-    )
-    published_north = float(
-        _round_half_away(linear(before_published_north, after_published_north))
-    )
+    published_east = float(_round_half_away(linear(before_published_east, after_published_east)))
+    published_north = float(_round_half_away(linear(before_published_north, after_published_north)))
     longitude, latitude = _TO_WGS84.transform(published_east, published_north)
     quaternion = quaternion_slerp_shortest(
         euler_to_quaternion_wxyz(before_roll, before_pitch, before_yaw),
