@@ -159,6 +159,7 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 | Guide | Contents |
 | --- | --- |
 | [Integrated INDUS-AD](docs/indus-ad.md) | Annotation layers, joins, dense references, and companion GNSS |
+| [Published sensor acceptance](docs/published-sensor-acceptance.md) | Corrected calibration/GNSS compatibility and verification limits |
 | [Configuration](docs/configuration.md) | Sources, paths, sensors, and policies |
 | [Extraction](docs/extraction.md) | Camera decoding, timestamps, GNSS, and staging |
 | [Validity](docs/validity.md) | Quality rules, quarantine, and partial publication |
@@ -171,9 +172,10 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 - Camera, calibration, and GNSS inputs are supported; LiDAR ingestion is not.
 - Inputs must follow a supported source contract. Arbitrary repositories and symbolic revisions are rejected.
 - `v1.0-trainval` is the only publication version. Windows is unsupported.
-- Production sensor extraction and a production GNSS companion release have not been
-  verified for the integrated backend; acceptance includes local sensor fixtures and
-  the pinned release's live metadata contract.
+- The corrected calibration and selected GNSS parsers have been checked against one
+  production recording's tables. The full production-video build and a production
+  GNSS companion release remain unverified; acceptance includes a synthetic build
+  using the published sensor layouts.
 
 ## Development
 

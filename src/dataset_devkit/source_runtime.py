@@ -266,6 +266,10 @@ def _prepare_indus_ad(
         target_fps=Fraction(str(config.downsampling.target_fps)),
         tolerance_ns=int(config.downsampling.tolerance_ms * 1_000_000),
         staging_root=config.paths.work_dir,
+        gnss_channel=config.source.gnss_channel,
+        gnss_time_basis=config.source.gnss_time_basis,
+        use_published_calibration=config.source.calibrated_ego_frame is not None,
+        resize_intrinsics=config.source.intrinsic_image_transform == "resize",
     )
 
     def acquire_one(
