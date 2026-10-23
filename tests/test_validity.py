@@ -777,7 +777,8 @@ def test_retry_never_deletes_replaced_or_linked_tombstone(
     elif replacement == "hardlink":
         os.link(tombstone, external.with_suffix(".link"))
     else:
-        tombstone.unlink()
+        # Keep the original inode allocated: this case requires a different inode.
+        tombstone.rename(tmp_path / "original-tombstone")
         tombstone.write_bytes(b"replacement")
     retry = getattr(staging_module, "retry_owned_tombstone_cleanup", None)
     assert callable(retry)
@@ -848,7 +849,7 @@ def test_retry_partial_state_is_deterministic(
     records = error.tombstones  # type: ignore[attr-defined]
     first = records[0]
     first_path = first.invocation_root / first.tombstone_name
-    first_path.unlink()
+    first_path.rename(tmp_path / "original-tombstone")
     first_path.write_bytes(b"replacement")
     retry = getattr(staging_module, "retry_owned_tombstone_cleanup", None)
     assert callable(retry)
