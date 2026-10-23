@@ -36,9 +36,9 @@
     "intrinsic_image_transform": "resize"
   },
   "paths": {
-    "work_dir": "../var/indus-ad-work",
-    "cache_dir": "../var/indus-ad-cache",
-    "output_dir": "../var/indus-ad-datasets"
+    "work_dir": "var/indus-ad-work",
+    "cache_dir": "var/indus-ad-cache",
+    "output_dir": "var/indus-ad-datasets"
   },
   "downsampling": {
     "target_fps": 2.0,
@@ -123,7 +123,7 @@
   },
   "quarantine": {
     "enabled": true,
-    "directory": "../var/indus-ad-quarantine",
+    "directory": "var/indus-ad-quarantine",
     "manifest_name": "rejected.jsonl"
   },
   "publication": {
