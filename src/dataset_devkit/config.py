@@ -946,7 +946,10 @@ class GlobalConfigV21(_GlobalConfigCommon):
 type GlobalConfig = GlobalConfigV1 | GlobalConfigV2 | GlobalConfigV21
 
 GLOBAL_CONFIG_ADAPTER: TypeAdapter[GlobalConfig] = TypeAdapter(
-    Annotated[GlobalConfig, Field(discriminator="schema_version")]
+    Annotated[
+        GlobalConfigV1 | GlobalConfigV2 | GlobalConfigV21,
+        Field(discriminator="schema_version"),
+    ]
 )
 
 
