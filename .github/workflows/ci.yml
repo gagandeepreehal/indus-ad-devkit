@@ -1,0 +1,50 @@
+name: Devkit checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install development dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Unit and integration tests
+        run: pytest -q
+      - name: Lint and type checks
+        run: |
+          ruff check src tests
+          mypy
+      - name: Verify generated schema
+        run: |
+          python -m dataset_devkit.schema
+          git diff --exit-code schema/dataset_config.schema.json
+      - name: Build distributions
+        run: python -m build
+      - name: Verify installed wheel and offline build
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-check"
+          "$RUNNER_TEMP/wheel-check/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-check/bin/dataset-devkit" --help
+          "$RUNNER_TEMP/wheel-check/bin/python" "$GITHUB_WORKSPACE/tools/decoded_fixture_smoke.py" "$RUNNER_TEMP/decoded-fixture"

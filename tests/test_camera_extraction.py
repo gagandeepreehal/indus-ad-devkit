@@ -351,7 +351,8 @@ def test_staged_image_identity_rejects_content_and_name_attacks(
     if attack == "mutation":
         staged.path.write_bytes(staged.path.read_bytes() + b"changed")
     elif attack == "replacement":
-        staged.path.unlink()
+        # Keep the original inode alive so Linux cannot reuse it for the replacement.
+        staged.path.rename(tmp_path / "original-staged.jpg")
         staged.path.write_bytes(outside.read_bytes())
     elif attack == "symlink":
         staged.path.unlink()
