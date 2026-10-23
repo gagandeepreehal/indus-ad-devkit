@@ -5,8 +5,12 @@
     "contract": "indus_ad_integrated_v1",
     "repo_id": "gagandeepreehal/indus-ad",
     "revision": "ee0e1754964f6af000625fb42d854565b39fec36",
-    "recording_ids": [],
-    "splits": ["train"],
+    "recording_ids": [
+      "17-53-27.393-d655e06f8e7ee863e68443502137f2fe"
+    ],
+    "splits": [
+      "train"
+    ],
     "cameras": [
       "cam_front",
       "cam_front_left",
