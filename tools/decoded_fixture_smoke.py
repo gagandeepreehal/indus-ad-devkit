@@ -97,7 +97,7 @@ def main(output_root: Path) -> int:
             runtime=BuildRuntime(
                 mcap_acquirer_factory=_raw_fallback,
                 decoded_acquirer_factory=decoded_factory,
-                official_smoke=False,
+                official_smoke=True,
             ),
         )
 

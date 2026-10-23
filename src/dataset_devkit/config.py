@@ -945,9 +945,9 @@ class GlobalConfigV21(_GlobalConfigCommon):
 
 type GlobalConfig = GlobalConfigV1 | GlobalConfigV2 | GlobalConfigV21
 
-GLOBAL_CONFIG_ADAPTER: TypeAdapter[GlobalConfig] = TypeAdapter(
-    Annotated[GlobalConfig, Field(discriminator="schema_version")]
-)
+type _TaggedGlobalConfig = Annotated[GlobalConfig, Field(discriminator="schema_version")]
+
+GLOBAL_CONFIG_ADAPTER: TypeAdapter[GlobalConfig] = TypeAdapter(_TaggedGlobalConfig)
 
 
 def normalized_source(config: GlobalConfig) -> SourceConfig:

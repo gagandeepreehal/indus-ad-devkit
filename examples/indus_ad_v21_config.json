@@ -5,8 +5,12 @@
     "contract": "indus_ad_integrated_v1",
     "repo_id": "gagandeepreehal/indus-ad",
     "revision": "ee0e1754964f6af000625fb42d854565b39fec36",
-    "recording_ids": [],
-    "splits": ["train"],
+    "recording_ids": [
+      "17-53-27.393-d655e06f8e7ee863e68443502137f2fe"
+    ],
+    "splits": [
+      "train"
+    ],
     "cameras": [
       "cam_front",
       "cam_front_left",
@@ -32,9 +36,9 @@
     "intrinsic_image_transform": "resize"
   },
   "paths": {
-    "work_dir": "../var/indus-ad-work",
-    "cache_dir": "../var/indus-ad-cache",
-    "output_dir": "../var/indus-ad-datasets"
+    "work_dir": "var/indus-ad-work",
+    "cache_dir": "var/indus-ad-cache",
+    "output_dir": "var/indus-ad-datasets"
   },
   "downsampling": {
     "target_fps": 2.0,
@@ -119,7 +123,7 @@
   },
   "quarantine": {
     "enabled": true,
-    "directory": "../var/indus-ad-quarantine",
+    "directory": "var/indus-ad-quarantine",
     "manifest_name": "rejected.jsonl"
   },
   "publication": {

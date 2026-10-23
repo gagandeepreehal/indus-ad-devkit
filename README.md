@@ -1,6 +1,6 @@
 # INDUS AD DEVKIT
 
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 ![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
 ![Platform: POSIX](https://img.shields.io/badge/platform-POSIX-lightgrey)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE.md)
@@ -52,11 +52,13 @@ the card reports privacy/legal and launch approval as pending.
 
 ## Setup
 
-Requires Python 3.12+ and Linux or macOS.
+Requires Python 3.12 (`>=3.12,<3.13`) and Linux or macOS.
+The mandatory official nuScenes loader check currently depends on NumPy <2;
+Python 3.13/3.14 are unsupported until that dependency chain is compatible.
 
 ```bash
-git clone https://github.com/gagandeepreehal/dataset-devkit.git
-cd dataset-devkit
+git clone https://github.com/gagandeepreehal/indus-ad-devkit.git
+cd indus-ad-devkit
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
@@ -83,19 +85,35 @@ checks published evidence and integrity; it does not independently rerun the ano
 
 ```bash
 cp examples/indus_ad_v21_config.json dataset_config.json
-cp examples/annotations.jsonl annotations.jsonl
+cp examples/indus_ad_annotations.jsonl annotations.jsonl
 ```
 
-The configuration pins a verified release and selects the full training split.
-Set `source.recording_ids` for a smaller build. Review camera and annotation layers,
-sampling rate, scene rules, quotas, and work/cache/output paths before running:
+The example pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36`
+and selects one recording: `17-53-27.393-d655e06f8e7ee863e68443502137f2fe`.
+It has the smallest total video size among recordings with all six required cameras,
+according to the pinned published metadata and Hub file sizes. Dense archives are disabled.
+
+- **Download:** 181,048,771 unique artifact bytes (about 181 MB / 173 MiB):
+  163,364,366 video bytes, 443,633 recording-table bytes, and 17,240,772 shared control bytes.
+  Network/protocol overhead and package installation are additional.
+- **Disk:** allow an initial 2 GiB working budget, including cached artifacts, control
+  copies, extracted JPEGs and staged/exported output. This is a planning estimate,
+  not a measured peak or a guaranteed upper bound. Package/environment space is additional.
+- **Runtime:** unmeasured on this recording; depends on network, CPU, decoding and disk.
+  A production-video build has not been run as part of this release check.
+- **Output on success:** `var/indus-ad-datasets/v1.0-trainval` for a configuration copied
+  to the repository root. Paths are relative to the configuration file. The build prints
+  actual sample/scene counts; source quality filters may reject a recording.
+
+See [quickstart provenance and limits](docs/quickstart-release.md).
+Review camera and annotation layers, sampling rate, scene rules, quotas, and paths before running:
 
 ```bash
 dataset-devkit build --config dataset_config.json
 ```
 
 The human annotation file is optional input content but must exist at its configured
-path. Remove the template's MCAP example row if you are not supplying human labels.
+path. The INDUS-AD template is empty and supplies no invented human labels.
 The legacy MCAP and decoded V2 examples use placeholder repository IDs and all-zero
 revisions; replace both with a source matching the corresponding contract.
 
