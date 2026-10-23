@@ -19,6 +19,7 @@ from dataset_devkit.config import (
     GlobalConfigV21,
     IndusAdHfSourceConfig,
 )
+from dataset_devkit.extraction.decoded_gnss import parse_privacy_gnss
 from dataset_devkit.huggingface_acquisition import (
     AcquisitionError,
     DownloadFile,
@@ -407,10 +408,13 @@ class IndusAdHfAcquirer:
                 cache_dir=self.cache_dir,
                 download_file=self.download_file,
             )
-            gnss_table = pq.ParquetFile(files[entry.artifact("gnss").path]).read(
-                columns=["recording_offset_ns"]
+            gnss_samples = parse_privacy_gnss(
+                files[entry.artifact("gnss").path],
+                expected_recording_id=entry.recording_id,
+                channel=self.source.gnss_channel,
+                time_basis=self.source.gnss_time_basis,
             )
-            duration = max(gnss_table.column(0).to_pylist())
+            duration = max(sample.recording_offset_ns for sample in gnss_samples)
             gnss_annotations = tuple(
                 annotation
                 for identity in sorted(companion_tree, key=lambda item: item.path)

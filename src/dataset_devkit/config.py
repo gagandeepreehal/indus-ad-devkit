@@ -792,6 +792,10 @@ class GnssAnnotationSourceConfig(HuggingFaceIdentityConfig):
         return value
 
 
+GnssChannel = Literal["gnss", "rec_gnss"]
+GnssTimeBasis = Literal["log_time_offset_ns", "time_offset_ns", "rec_time_offset_ns"]
+
+
 class IndusAdHfSourceConfig(HuggingFaceIdentityConfig):
     type: Literal["indus_ad_hf"]
     contract: Literal["indus_ad_integrated_v1"]
@@ -806,10 +810,16 @@ class IndusAdHfSourceConfig(HuggingFaceIdentityConfig):
     annotation_layers: list[IndusAdAnnotationLayer] = Field(json_schema_extra={"uniqueItems": True})
     dense_assets: DenseAssetSelection = Field(default_factory=DenseAssetSelection)
     gnss_annotation_source: GnssAnnotationSourceConfig | None = None
+    gnss_channel: GnssChannel | None = None
+    gnss_time_basis: GnssTimeBasis | None = None
+    calibrated_ego_frame: Literal["front_camera_x_forward_y_left_z_up"] | None = None
+    intrinsic_image_transform: Literal["identity", "resize"] = "identity"
     privacy_classification: Literal["privacy_transformed"] = "privacy_transformed"
 
     @model_validator(mode="after")
     def validate_selection(self) -> IndusAdHfSourceConfig:
+        if (self.gnss_channel is None) != (self.gnss_time_basis is None):
+            raise ValueError("gnss_channel and gnss_time_basis must be configured together")
         if not self.recording_ids and not self.splits:
             raise ValueError("integrated source requires recording_ids or splits")
         for name, values in (

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 from collections.abc import Callable
 from dataclasses import replace
@@ -13,8 +14,14 @@ import pytest
 from dataset_devkit.config import DenseAssetSelection, GnssAnnotationSourceConfig
 from dataset_devkit.huggingface_acquisition import AcquisitionError, IntegrityError
 from dataset_devkit.indus_ad_acquisition import IndusAdHfAcquirer
-from dataset_devkit.indus_ad_annotations import gnss_scenario_schema
-from indus_ad_fixture import _repo_tree, write_executable_indus_ad_fixture, write_indus_ad_fixture
+from dataset_devkit.indus_ad_annotations import IndusAdAnnotationError, gnss_scenario_schema
+from indus_ad_fixture import (
+    _repo_tree,
+    refreshed_tree,
+    write_executable_indus_ad_fixture,
+    write_indus_ad_fixture,
+)
+from published_sensor_fixture import rewrite_published_tables
 
 
 @pytest.mark.parametrize("cached", [False, True])
@@ -151,8 +158,30 @@ def test_acquirer_rejects_download_path_escape(tmp_path: Path) -> None:
         acquirer.load_plan()
 
 
-def test_acquirer_verifies_pinned_gnss_companion(tmp_path: Path) -> None:
+@pytest.mark.parametrize("published", [False, True])
+@pytest.mark.parametrize("past_selected_end", [False, True])
+def test_acquirer_verifies_pinned_gnss_companion(
+    tmp_path: Path, published: bool, past_selected_end: bool
+) -> None:
     fixture = write_executable_indus_ad_fixture(tmp_path / "source")
+    if published:
+        rewrite_published_tables(fixture.root)
+        gnss_path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
+        rows = pq.ParquetFile(gnss_path).read().to_pylist()
+        for row in rows:
+            if row["channel"] == "rec_gnss":
+                fields = json.loads(row["fields_json"])
+                fields["time_offset_ns"] *= 2
+                row["fields_json"] = json.dumps(fields)
+        pq.write_table(pa.Table.from_pylist(rows), gnss_path)
+        fixture = refreshed_tree(
+            replace(
+                fixture,
+                source=fixture.source.model_copy(
+                    update={"gnss_channel": "gnss", "gnss_time_basis": "time_offset_ns"}
+                ),
+            )
+        )
     companion_root = tmp_path / "companion"
     (companion_root / "data").mkdir(parents=True)
     path = companion_root / "data/annotations.parquet"
@@ -165,7 +194,7 @@ def test_acquirer_verifies_pinned_gnss_companion(tmp_path: Path) -> None:
                     "recording_id": fixture.recording_id,
                     "window_index": 0,
                     "window_start_offset_ns": 0,
-                    "window_end_offset_ns": 1_000_000_000,
+                    "window_end_offset_ns": 1_000_000_000 + int(past_selected_end),
                     "motion_label": "moving",
                     "validity_tags": ["valid"],
                     "quality_tags": ["good"],
@@ -204,6 +233,11 @@ def test_acquirer_verifies_pinned_gnss_companion(tmp_path: Path) -> None:
         companion_list_tree=lambda repo_id, revision: _repo_tree(companion_root),
         download_file=download,
     )
-    bundle = acquirer.acquire(acquirer.load_plan().recordings[0])
+    entry = acquirer.load_plan().recordings[0]
+    if past_selected_end:
+        with pytest.raises(IndusAdAnnotationError, match="window exceeds recording"):
+            acquirer.acquire(entry)
+        return
+    bundle = acquirer.acquire(entry)
     assert bundle.annotations.gnss[0].window_index == 0
     assert bundle.annotations.availability["gnss"].state == "available"
