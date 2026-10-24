@@ -1,44 +1,70 @@
-# Bounded first build and release provenance
+# Verified bounded first build
 
-The v0.1.1 example selects only recording
-`17-53-27.393-d655e06f8e7ee863e68443502137f2fe` from
+The current example selects recording
+`17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1` from
 `gagandeepreehal/indus-ad` at immutable dataset revision
 `ee0e1754964f6af000625fb42d854565b39fec36`.
 
-Selection ranked 1,469 published metadata rows by the sum of the six required
-camera video sizes, requiring all six paths to be present. The tilted camera
-is excluded from this example. This selects the smallest qualifying recording
-by video bytes; it does not claim the best source quality or a successful
-production build. Raw recordings, production videos and dense archives were
-not downloaded during this selection.
+It passed a real six-camera build using the published v0.1.1 wheel in a clean
+Python 3.12 dependency environment on macOS arm64 on 24 October 2026. The revised
+configuration, not the original configuration bundled with the tag's source,
+selects this recording and sets one catch-all scenario rule with quota 1.
+An empty scenario-rules list intentionally selects no scenes.
+
+## Selection and transfer size
+
+The original byte-size-only choice failed a production build on unavailable GNSS
+poses. Candidates were subsequently ranked by six-camera bytes, screened using
+the published quality summary and actual pinned camera/GNSS tables, and then
+verified by a real build. This is a verified small example, not a claim that every
+recording follows the same supported timing/origin layout.
 
 | Artifact class | Unique bytes |
 | --- | ---: |
-| Six privacy-transformed videos | 163,364,366 |
-| Six camera-frame tables, calibration and GNSS | 443,633 |
+| Six privacy-transformed videos | 190,924,636 |
+| Six camera-frame tables, calibration and GNSS | 499,082 |
 | 74 shared controls, including annotation/dense indexes | 17,240,772 |
-| Total | 181,048,771 |
+| Total: 88 unique artifacts | 208,664,490 |
 
-These counts describe unique selected artifacts from pinned Hub metadata.
-Caches may avoid transfers; network overhead, dependency installation, extracted
-JPEGs, staging and final outputs are additional. Dense indexes are controls;
-dense payload archives remain disabled. An initial 2 GiB working budget is a
-planning allowance, not a measured peak or guaranteed bound. Runtime and final
-sample/scene counts remain unmeasured for this production recording.
+This is about 209 MB / 199 MiB before network overhead, dependency installation,
+extracted JPEGs, staging and final outputs. Dense indexes are controls; dense TAR
+payloads remain disabled.
+
+## Measured result
+
+- 1 scene, 48 samples and 288 camera images.
+- 2 joined camera pseudo-label rows and 4 dense references; GNSS scenario labels
+  are not configured, and dense payloads were not downloaded.
+- Build, CLI validation, inspection and mandatory official nuScenes loading passed.
+- Successful build time: 59.7 seconds **with selected source artifacts cached**.
+  It excludes installation, cold downloads and the separate validate/inspect calls.
+- Sampled working-file peak: 382,150,413 bytes, measured by summing file lengths
+  every two seconds. This excludes the Python environment, is not allocated disk
+  usage and cannot establish an instantaneous maximum. Keep a 2 GiB working budget
+  plus environment space; other machines and larger selections vary.
+- Publisher-authenticated access was used. An approved non-owner account and a
+  Linux production-video run were not tested in this session.
+
+[Machine-readable acceptance receipt](quickstart-acceptance.json).
+See [annotation coverage](annotation-coverage.md) for source availability and exact
+join behavior. The 2 FPS example retains two of this recording's three front-camera
+labels; missing labels in the other selected cameras are expected.
 
 The example uses `gnss` and embedded `time_offset_ns`, explicit calibrated ego
 axes and the confirmed pure image resize. See
-[published sensor acceptance](published-sensor-acceptance.md) for parser and
-synthetic end-to-end evidence. Do not substitute synthetic fixture results for
-production-video validation or privacy-detector quality evaluation.
+[published sensor acceptance](published-sensor-acceptance.md) for the sensor policy.
+A successful format/build check does not measure residual privacy risk or physical
+calibration accuracy.
 
-To expand the build deliberately, replace `source.recording_ids` with specific
-IDs. An empty list selects every recording matching `source.splits`; the current
-train split is a storage label, not an authored evaluation benchmark.
+To expand deliberately, select explicit recording IDs and set scenario rules and
+quotas for the desired output. An empty recording list selects every recording
+matching `source.splits`; technical `train` is a storage label, not an evaluation
+benchmark. Unsupported source timing/origin layouts fail closed.
 
 Release [v0.1.1](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
-was published on 24 October 2026 as an alpha prerelease. Software publication
-does not constitute final dataset launch approval.
+was published on 24 October 2026 as an alpha prerelease. This newer example uses
+that wheel but does not alter its immutable release artifacts or tag. Software
+publication and quickstart verification do not constitute final dataset launch approval.
 
 ## Python support and mandatory format check
 
