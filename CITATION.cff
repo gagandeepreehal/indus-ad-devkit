@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "Cite this software by release or commit; cite the source dataset separately using its Hugging Face citation."
 type: software
-title: "Indus-AD Devkit"
+title: "INDUS-AD Devkit"
 authors:
   - name: "Gagandeep Reehal"
 version: 0.1.2
