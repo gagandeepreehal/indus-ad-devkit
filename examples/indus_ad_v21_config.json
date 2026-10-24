@@ -6,7 +6,7 @@
     "repo_id": "gagandeepreehal/indus-ad",
     "revision": "ee0e1754964f6af000625fb42d854565b39fec36",
     "recording_ids": [
-      "17-53-27.393-d655e06f8e7ee863e68443502137f2fe"
+      "17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1"
     ],
     "splits": [
       "train"
@@ -110,7 +110,12 @@
   "scenarios": {
     "seed": 42,
     "strict_quotas": true,
-    "rules": []
+    "rules": [
+      {
+        "name": "quickstart",
+        "quota": 1
+      }
+    ]
   },
   "split": {
     "test_fraction": 0.2,

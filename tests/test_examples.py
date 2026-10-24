@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from conftest import FeatureFactory
 from dataset_devkit.annotations import parse_annotations
 from dataset_devkit.config import load_config, privacy_classification
+from dataset_devkit.scenario_selection import select_scenarios
 from dataset_devkit.schema import validate_config_schema_and_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,9 +15,7 @@ def test_shipped_example_configuration_is_valid() -> None:
     config = load_config(ROOT / "examples" / "dataset_config.json")
 
     assert config.schema_version == "1.0"
-    assert config.huggingface.repo_id == (
-        "owner/restricted-raw-mcap"
-    )
+    assert config.huggingface.repo_id == ("owner/restricted-raw-mcap")
     assert config.huggingface.revision == "0" * 40
     assert config.huggingface.manifest_path == "manifest.jsonl"
     assert all(config.mcap_compatibility.model_dump().values())
@@ -52,3 +52,11 @@ def test_readme_distinguishes_raw_and_privacy_transformed_sources() -> None:
     assert "restricted raw" in readme.casefold()
     assert "recording-local ENU" in readme
     assert "does not independently rerun the anonymizer" in readme
+
+
+def test_indus_ad_quickstart_selects_one_eligible_scene(feature_factory: FeatureFactory) -> None:
+    config = validate_config_schema_and_runtime(ROOT / "examples" / "indus_ad_v21_config.json")
+    feature = feature_factory(scene_token="quickstart-scene")
+    selected = select_scenarios((feature,), config.scenarios)
+    assert selected.selected_scenes == (feature,)
+    assert len(selected.assignments) == 1

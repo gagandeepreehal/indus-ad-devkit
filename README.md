@@ -44,7 +44,8 @@ image-quality pseudo-labels joined by `recording_id`.
 Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/8983a2b9852d7109b97c5c29dd0482fa9e7e92bb/README.md),
 checked 16 October 2026. Its `train` split is a storage/API label, not an authored benchmark split.
 The devkit creates its own derived train/test split. Dataset access requires manual approval;
-the card reports privacy/legal and launch approval as pending.
+the publisher approved the privacy/access decision on 23 October 2026. Final dataset
+launch approval remains pending; see the [current dataset privacy policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
 
 ![INDUS-AD video, GNSS and motion, pseudo-labels, and dense semantic/depth layers joined by recording ID](docs/assets/indus-ad-dataset-layers.png)
 
@@ -89,21 +90,23 @@ cp examples/indus_ad_annotations.jsonl annotations.jsonl
 ```
 
 The example pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36`
-and selects one recording: `17-53-27.393-d655e06f8e7ee863e68443502137f2fe`.
-It has the smallest total video size among recordings with all six required cameras,
-according to the pinned published metadata and Hub file sizes. Dense archives are disabled.
+and selects recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`.
+It selects exactly one eligible scene through an explicit `quickstart` quota of 1;
+an empty scenario-rules list selects no scenes. Dense archives are disabled.
 
-- **Download:** 181,048,771 unique artifact bytes (about 181 MB / 173 MiB):
-  163,364,366 video bytes, 443,633 recording-table bytes, and 17,240,772 shared control bytes.
-  Network/protocol overhead and package installation are additional.
-- **Disk:** allow an initial 2 GiB working budget, including cached artifacts, control
-  copies, extracted JPEGs and staged/exported output. This is a planning estimate,
-  not a measured peak or a guaranteed upper bound. Package/environment space is additional.
-- **Runtime:** unmeasured on this recording; depends on network, CPU, decoding and disk.
-  A production-video build has not been run as part of this release check.
-- **Output on success:** `var/indus-ad-datasets/v1.0-trainval` for a configuration copied
-  to the repository root. Paths are relative to the configuration file. The build prints
-  actual sample/scene counts; source quality filters may reject a recording.
+- **Download:** 208,664,490 unique artifact bytes (about 209 MB / 199 MiB):
+  190,924,636 video bytes, 499,082 recording-table bytes and 17,240,772 shared controls.
+  Network overhead and package installation are additional.
+- **Disk:** allow a 2 GiB working budget plus the Python environment. The successful
+  cached run sampled a 382,150,413-byte peak in working-file lengths; this excludes
+  the environment and is not a guaranteed instantaneous peak or allocation bound.
+- **Runtime:** the successful cached-artifact build took 59.7 seconds on macOS arm64 /
+  Python 3.12.14. Cold downloads and installation are additional; other machines vary.
+- **Verified output:** 1 scene, 48 samples and 288 camera images, with 2 joined camera
+  labels and 4 dense references. Build, validation, inspection and mandatory official
+  nuScenes loading passed using the published v0.1.1 wheel. Dense payloads were disabled.
+- **Output directory:** `var/indus-ad-datasets/v1.0-trainval` for a configuration copied
+  to the repository root. Paths are relative to the configuration file.
 
 See [quickstart provenance and limits](docs/quickstart-release.md).
 Review camera and annotation layers, sampling rate, scene rules, quotas, and paths before running:
@@ -121,6 +124,10 @@ The pipeline verifies selected artifacts, samples frames, builds scenes, applies
 filters and seeded scenario quotas, and assigns train/test splits. Strict quota
 shortfalls fail the build. For transformed sources, trajectories and motion features
 use precise recording-local ENU; rounded global coordinates provide context only.
+
+See [measured annotation coverage and exact-join examples](docs/annotation-coverage.md).
+A regular sampling grid can retain no labels from a sparsely annotated recording;
+inspect the export contract's `join_audit` before using it for supervision.
 
 Six untilted cameras are selected by default; `cam_front_tilted` is optional. Dense
 semantic/depth payloads are metadata-only by default. `selected_frames` modes require
@@ -190,10 +197,13 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 - Camera, calibration, and GNSS inputs are supported; LiDAR ingestion is not.
 - Inputs must follow a supported source contract. Arbitrary repositories and symbolic revisions are rejected.
 - `v1.0-trainval` is the only publication version. Windows is unsupported.
+- Some source-table variants (missing/signed producer batch offsets or nonzero
+  local-ENU origin offsets) are outside the current supported contract and are
+  rejected. The bounded quickstart is selected by actual sensor-table preflight.
 - The corrected calibration and selected GNSS parsers have been checked against one
-  production recording's tables. The full production-video build and a production
-  GNSS companion release remain unverified; acceptance includes a synthetic build
-  using the published sensor layouts.
+  production recording's tables. The bounded quickstart has now passed a real-video
+  build on macOS; Linux/macOS CI also covers synthetic/offline exports. Other
+  recordings and a production GNSS companion release remain unverified.
 
 ## Development
 

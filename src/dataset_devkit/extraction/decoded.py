@@ -512,21 +512,20 @@ class DecodedRecordingExtractor:
             if existing is not None:
                 return existing
             interpolation = interpolate_privacy_gnss(gnss, offset)
-            if (
-                not interpolation.available
-                or interpolation.translation_xyz_m is None
-                or interpolation.quaternion_wxyz is None
-            ):
-                raise StructuralExtractionError(
-                    "decoded selected frame lacks a GNSS interpolation bracket"
+            if interpolation.available:
+                if interpolation.translation_xyz_m is None or interpolation.quaternion_wxyz is None:
+                    raise StructuralExtractionError("available decoded GNSS pose lacks geometry")
+                pose = EgoPose(
+                    offset,
+                    True,
+                    interpolation.translation_xyz_m,
+                    interpolation.quaternion_wxyz,
+                    interpolation,
                 )
-            pose = EgoPose(
-                offset,
-                True,
-                interpolation.translation_xyz_m,
-                interpolation.quaternion_wxyz,
-                interpolation,
-            )
+            else:
+                # As in the MCAP extractor, preserve unavailable poses for validity
+                # evaluation instead of treating ordinary GNSS gaps as corruption.
+                pose = EgoPose(offset, False, None, None, interpolation)
             poses[offset] = pose
             return pose
 
