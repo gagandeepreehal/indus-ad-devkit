@@ -1,7 +1,8 @@
 # Integrated INDUS-AD workflow
 
-Copy `examples/indus_ad_v21_config.json` and `examples/annotations.jsonl` to your
-working directory. Review the recording/split selection, cameras, scene rules,
+Copy `examples/indus_ad_v21_config.json` to `dataset_config.json` and the empty
+`examples/indus_ad_annotations.jsonl` to `annotations.jsonl` in your working
+directory. Review the recording/split selection, cameras, scene rules,
 quotas, and output paths before running `dataset-devkit build --config CONFIG`.
 
 Schema `2.1` selects `source.type: "indus_ad_hf"` and
@@ -103,3 +104,7 @@ files below `data/` must follow the exact companion schema. The adapter verifies
 their source revision, recording ownership, relative bounds, and unique window
 identities against the selected sensor recording. A production companion release
 is not configured in the example.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

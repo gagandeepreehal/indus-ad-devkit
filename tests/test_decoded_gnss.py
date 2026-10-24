@@ -352,3 +352,21 @@ def test_invalid_fix_preserves_absent_uncertainty_without_inventing_confidence(
     pq.write_table(pa.Table.from_pylist(rows), path)
     with pytest.raises(StructuralExtractionError, match="orientation uncertainty"):
         parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+
+
+def test_untimed_gnss_messages_trim_edges_and_block_internal_interpolation(tmp_path: Path) -> None:
+    fixture = write_decoded_fixture(tmp_path)
+    path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
+    original = pq.ParquetFile(path).read().to_pylist()
+    bad = dict(original[0], recording_offset_ns=None, is_valid=False)
+    pq.write_table(pa.Table.from_pylist([bad, original[0], bad, original[1], bad]), path)
+    samples = parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+    assert len(samples) == 2
+    assert [(s.untimed_messages_before, s.untimed_messages_after) for s in samples] == [
+        (1, 1), (1, 1)
+    ]
+    assert interpolate_privacy_gnss(samples, 0).available
+    assert interpolate_privacy_gnss(samples, 1_000_000_000).available
+    assert not interpolate_privacy_gnss(samples, 500_000_000).available
+    assert not interpolate_privacy_gnss(samples, -1).available
+    assert not interpolate_privacy_gnss(samples, 1_000_000_001).available

@@ -178,6 +178,8 @@ class PrivacyGnssSample:
     quality: Mapping[str, Any] | None
     local_enu_origin_offset_ns: int
     published_horizontal_resolution_m: float | None
+    untimed_messages_before: int = 0
+    untimed_messages_after: int = 0
 
     @property
     def timestamp_ns(self) -> int:

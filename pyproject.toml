@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dataset-devkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "INDUS AD DEVKIT: reproducible driving dataset generation"
 readme = "README.md"
 license = {file = "LICENSE.md"}
@@ -33,6 +33,12 @@ dependencies = [
   "scipy>=1.15,<2",
 ]
 
+[project.urls]
+Repository = "https://github.com/gagandeepreehal/indus-ad-devkit"
+Documentation = "https://github.com/gagandeepreehal/indus-ad-devkit/blob/main/README.md"
+Issues = "https://github.com/gagandeepreehal/indus-ad-devkit/issues"
+Dataset = "https://huggingface.co/datasets/gagandeepreehal/indus-ad"
+
 [project.optional-dependencies]
 dev = [
   "build>=1.2,<2",
@@ -54,6 +60,22 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dataset_devkit"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/docs",
+  "/examples",
+  "/schema",
+  "/tools",
+  "/.github",
+  "/README.md",
+  "/LICENSE.md",
+  "/NOTICE",
+  "/CITATION.cff",
+  "/pyproject.toml",
+]
 
 [tool.ruff]
 target-version = "py312"

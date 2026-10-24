@@ -159,3 +159,7 @@ Published `mz_extensions/validity.json` is a versioned object with `recordings` 
 Every exported source retains its complete observation list, grid audits, sample audits,
 audit-only/final-candidate identities, configured policy, and report validity. Scene rows retain the
 per-scene aggregates and official sample references. No observed invalidity reason is discarded.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

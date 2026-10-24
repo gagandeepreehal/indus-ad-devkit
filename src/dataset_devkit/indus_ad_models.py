@@ -420,6 +420,10 @@ class IndusAdAnnotationBundle:
     gnss: tuple[GnssScenarioAnnotation, ...] = ()
     dense_refs: tuple[DenseAssetRef, ...] = ()
     availability: Mapping[str, AnnotationAvailability] = MappingProxyType({})
+    camera_export_offsets: Mapping[tuple[str, str, int, int], int] = MappingProxyType({})
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "availability", MappingProxyType(dict(self.availability)))
+        object.__setattr__(
+            self, "camera_export_offsets", MappingProxyType(dict(self.camera_export_offsets))
+        )

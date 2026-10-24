@@ -179,7 +179,7 @@ def _camera(value: object) -> CameraName:
 
 
 def _camera_rows(
-    bundle: _DecodedBundle, *, batch_time_basis: str = "batch_time_offset_ns"
+    bundle: _DecodedBundle, *, batch_time_basis: str = "rec_time_offset_ns"
 ) -> tuple[_CameraRow, ...]:
     if batch_time_basis not in {"batch_time_offset_ns", "rec_time_offset_ns"}:
         raise ValueError("unsupported camera batch time basis")
@@ -194,10 +194,6 @@ def _camera_rows(
         production = columns >= _PRODUCTION_FRAME_REQUIRED
         if not simple and not production:
             raise StructuralExtractionError("decoded camera frame schema is unsupported")
-        if simple and batch_time_basis != "batch_time_offset_ns":
-            raise StructuralExtractionError(
-                "recorded-camera clock requires production frame schema"
-            )
         for row in rows:
             if row.get("recording_id") != bundle.entry.recording_id:
                 raise StructuralExtractionError("decoded camera frame recording identity differs")
@@ -213,7 +209,13 @@ def _camera_rows(
                 if source_index != previous_source_index:
                     raise StructuralExtractionError("decoded camera index changes within a camera")
             offset = _integer(
-                row.get("recording_offset_ns" if simple else "camera_time_offset_ns"),
+                row.get(
+                    "recording_offset_ns" if simple else (
+                        "rec_time_offset_ns"
+                        if batch_time_basis == "rec_time_offset_ns"
+                        else "camera_time_offset_ns"
+                    )
+                ),
                 "camera recording offset",
             )
             batch_offset = _integer(
@@ -221,7 +223,7 @@ def _camera_rows(
                 "batch recording offset",
                 nonnegative=False,
             )
-            if batch_time_basis == "rec_time_offset_ns":
+            if production and batch_time_basis == "rec_time_offset_ns":
                 message_index = _integer(row.get("message_index"), "message index")
                 channel = row.get("channel")
                 if not isinstance(channel, str) or not channel:
@@ -421,7 +423,7 @@ class DecodedRecordingExtractor:
         gnss_time_basis: GnssTimeBasis | None = None,
         use_published_calibration: bool = False,
         resize_intrinsics: bool = False,
-        camera_batch_time_basis: str = "batch_time_offset_ns",
+        camera_batch_time_basis: str = "rec_time_offset_ns",
     ) -> None:
         self.target_fps = (
             target_fps if isinstance(target_fps, Fraction) else Fraction(str(target_fps))
@@ -514,6 +516,31 @@ class DecodedRecordingExtractor:
             selection.misses,
             tuple(offset for offset in offsets if offset < 0)
             + selection.unused_batch_timestamps_ns,
+        )
+        # Untimed quality-flagged GNSS messages define excluded intervals in
+        # source order. Never assign those messages a logger-derived sensor time.
+        gaps = [
+            (left.recording_offset_ns, right.recording_offset_ns)
+            for left, right in zip(gnss, gnss[1:], strict=False)
+            if left.untimed_messages_after or right.untimed_messages_before
+        ]
+        excluded_batches = {
+            row.batch_offset_ns for row in rows
+            if (
+                (gnss[0].untimed_messages_before
+                 and row.recording_offset_ns < gnss[0].recording_offset_ns)
+                or (gnss[-1].untimed_messages_after
+                    and row.recording_offset_ns > gnss[-1].recording_offset_ns)
+                or any(left < row.recording_offset_ns < right for left, right in gaps)
+            )
+        }
+        selection = GridSelection(
+            tuple(e for e in selection.entries if e.batch_timestamp_ns not in excluded_batches),
+            selection.misses,
+            tuple(sorted(set(selection.unused_batch_timestamps_ns) | {
+                e.batch_timestamp_ns for e in selection.entries
+                if e.batch_timestamp_ns in excluded_batches
+            })),
         )
         return self._decode(bundle, by_camera, calibrations, gnss, selection)
 

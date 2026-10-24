@@ -33,7 +33,8 @@
     "gnss_channel": "gnss",
     "gnss_time_basis": "time_offset_ns",
     "calibrated_ego_frame": "front_camera_x_forward_y_left_z_up",
-    "intrinsic_image_transform": "resize"
+    "intrinsic_image_transform": "resize",
+    "camera_batch_time_basis": "rec_time_offset_ns"
   },
   "paths": {
     "work_dir": "var/indus-ad-work",

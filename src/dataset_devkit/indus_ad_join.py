@@ -106,7 +106,10 @@ def join_indus_ad_annotations(
             value.frame_id,
         ),
     ):
-        matched = sample_data_index.get((annotation.camera_name, annotation.recording_offset_ns))
+        export_offset = annotations.camera_export_offsets.get(
+            annotation.source_frame_identity, annotation.recording_offset_ns
+        )
+        matched = sample_data_index.get((annotation.camera_name, export_offset))
         if matched is None:
             continue
         joined = JoinedCameraAnnotation(

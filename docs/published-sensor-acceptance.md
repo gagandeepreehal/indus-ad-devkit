@@ -54,3 +54,7 @@ unknown versions, duplicate times, missing times, and absolute-time fields.
 
 The historical `indus-ad-acceptance.md` records the earlier implementation's
 scope. This note records the newer compatibility fix and its verification limits.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

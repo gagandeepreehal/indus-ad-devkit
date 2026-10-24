@@ -93,9 +93,7 @@ def test_decoded_extractor_reads_production_shards_and_batch_timing(
     assert len(owned.result.samples) == 12
     first_batch = [sample for sample in owned.result.samples if sample.batch_timestamp_ns == 0]
     assert len(first_batch) == len(DEFAULT_DECODED_CAMERAS)
-    assert {sample.camera_timestamp_ns for sample in first_batch} == {
-        index * 10 for index in range(len(DEFAULT_DECODED_CAMERAS))
-    }
+    assert {sample.camera_timestamp_ns for sample in first_batch} == {0}
 
 
 def test_decoded_signed_batch_preroll_is_preserved_but_not_exported(tmp_path: Path) -> None:
@@ -108,7 +106,10 @@ def test_decoded_signed_batch_preroll_is_preserved_but_not_exported(tmp_path: Pa
         rows = table.to_pylist()
         rows[0]["batch_time_offset_ns"] = -77_419_286
         pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
-    owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
+    owned = DecodedRecordingExtractor(
+        target_fps=Fraction(1, 1), tolerance_ns=1, staging_root=tmp_path / "work",
+        camera_batch_time_basis="batch_time_offset_ns",
+    ).extract_owned(bundle)
     assert owned.result.selected_grid.unused_batch_timestamps_ns == (-77_419_286,)
     assert len(owned.result.samples) == len(DEFAULT_DECODED_CAMERAS)
     assert {sample.batch_timestamp_ns for sample in owned.result.samples} == {1_000_000_000}
@@ -256,10 +257,25 @@ def test_recorded_camera_clock_requires_explicit_selection_and_shared_batch_time
             row["batch_time_offset_ns"] = None
         pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
     with pytest.raises(StructuralExtractionError, match="batch recording offset"):
-        decoded_module._camera_rows(bundle)
+        decoded_module._camera_rows(bundle, batch_time_basis="batch_time_offset_ns")
     selected = decoded_module._camera_rows(bundle, batch_time_basis="rec_time_offset_ns")
     assert {row.batch_offset_ns for row in selected} == {0, 1_000_000_000}
     rows[0]["rec_time_offset_ns"] += 1
     pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
     with pytest.raises(StructuralExtractionError, match="differ within batch"):
         decoded_module._camera_rows(bundle, batch_time_basis="rec_time_offset_ns")
+
+
+def test_untimed_gnss_start_is_trimmed_without_rejecting_recording(tmp_path: Path) -> None:
+    fixture = write_decoded_fixture(tmp_path / "remote")
+    bundle = acquire_fixture_bundle(fixture, tmp_path / "cache")
+    path = bundle.path(bundle.entry.artifact("gnss").path)
+    rows = pq.ParquetFile(path).read().to_pylist()
+    bad = dict(rows[0], recording_offset_ns=None, is_valid=False)
+    rows[0]["recording_offset_ns"] = 500_000_000
+    pq.write_table(pa.Table.from_pylist([bad, *rows]), path)
+    owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
+    assert len(owned.result.samples) == len(DEFAULT_DECODED_CAMERAS)
+    assert {s.camera_timestamp_ns for s in owned.result.samples} == {1_000_000_000}
+    assert owned.result.selected_grid.unused_batch_timestamps_ns == (0,)
+    assert owned.result.gnss_samples[0].untimed_messages_before == 1

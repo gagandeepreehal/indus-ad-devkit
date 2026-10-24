@@ -810,10 +810,10 @@ class IndusAdHfSourceConfig(HuggingFaceIdentityConfig):
     annotation_layers: list[IndusAdAnnotationLayer] = Field(json_schema_extra={"uniqueItems": True})
     dense_assets: DenseAssetSelection = Field(default_factory=DenseAssetSelection)
     gnss_annotation_source: GnssAnnotationSourceConfig | None = None
-    gnss_channel: GnssChannel | None = None
-    gnss_time_basis: GnssTimeBasis | None = None
+    gnss_channel: GnssChannel | None = "gnss"
+    gnss_time_basis: GnssTimeBasis | None = "time_offset_ns"
     camera_batch_time_basis: Literal["batch_time_offset_ns", "rec_time_offset_ns"] = (
-        "batch_time_offset_ns"
+        "rec_time_offset_ns"
     )
     calibrated_ego_frame: Literal["front_camera_x_forward_y_left_z_up"] | None = None
     intrinsic_image_transform: Literal["identity", "resize"] = "identity"
