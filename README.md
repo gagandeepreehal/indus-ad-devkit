@@ -1,4 +1,4 @@
-# Indus-AD Devout
+# Indus-AD Devkit
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Devkit checks](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml)
