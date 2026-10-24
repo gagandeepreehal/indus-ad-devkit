@@ -971,6 +971,15 @@
           "default": null,
           "title": "Calibrated Ego Frame"
         },
+        "camera_batch_time_basis": {
+          "default": "batch_time_offset_ns",
+          "enum": [
+            "batch_time_offset_ns",
+            "rec_time_offset_ns"
+          ],
+          "title": "Camera Batch Time Basis",
+          "type": "string"
+        },
         "cameras": {
           "items": {
             "enum": [

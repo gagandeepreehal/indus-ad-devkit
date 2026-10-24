@@ -178,7 +178,12 @@ def _camera(value: object) -> CameraName:
     return cast(CameraName, value)
 
 
-def _camera_rows(bundle: _DecodedBundle) -> tuple[_CameraRow, ...]:
+def _camera_rows(
+    bundle: _DecodedBundle, *, batch_time_basis: str = "batch_time_offset_ns"
+) -> tuple[_CameraRow, ...]:
+    if batch_time_basis not in {"batch_time_offset_ns", "rec_time_offset_ns"}:
+        raise ValueError("unsupported camera batch time basis")
+    shared_recorded_offsets: dict[tuple[str, int], int] = {}
     result: list[_CameraRow] = []
     next_index: dict[CameraName, int] = defaultdict(int)
     previous_offset: dict[CameraName, int] = {}
@@ -189,6 +194,10 @@ def _camera_rows(bundle: _DecodedBundle) -> tuple[_CameraRow, ...]:
         production = columns >= _PRODUCTION_FRAME_REQUIRED
         if not simple and not production:
             raise StructuralExtractionError("decoded camera frame schema is unsupported")
+        if simple and batch_time_basis != "batch_time_offset_ns":
+            raise StructuralExtractionError(
+                "recorded-camera clock requires production frame schema"
+            )
         for row in rows:
             if row.get("recording_id") != bundle.entry.recording_id:
                 raise StructuralExtractionError("decoded camera frame recording identity differs")
@@ -208,9 +217,21 @@ def _camera_rows(bundle: _DecodedBundle) -> tuple[_CameraRow, ...]:
                 "camera recording offset",
             )
             batch_offset = _integer(
-                row.get("recording_offset_ns" if simple else "batch_time_offset_ns"),
+                row.get("recording_offset_ns" if simple else batch_time_basis),
                 "batch recording offset",
+                nonnegative=False,
             )
+            if batch_time_basis == "rec_time_offset_ns":
+                message_index = _integer(row.get("message_index"), "message index")
+                channel = row.get("channel")
+                if not isinstance(channel, str) or not channel:
+                    raise StructuralExtractionError("recorded-camera clock requires source channel")
+                key = (channel, message_index)
+                previous = shared_recorded_offsets.setdefault(key, batch_offset)
+                if previous != batch_offset:
+                    raise StructuralExtractionError(
+                        "recorded-camera timestamps differ within batch"
+                    )
             frame_id = _integer(
                 row.get("frame_index" if simple else "frame_id"),
                 "frame ID",
@@ -400,6 +421,7 @@ class DecodedRecordingExtractor:
         gnss_time_basis: GnssTimeBasis | None = None,
         use_published_calibration: bool = False,
         resize_intrinsics: bool = False,
+        camera_batch_time_basis: str = "batch_time_offset_ns",
     ) -> None:
         self.target_fps = (
             target_fps if isinstance(target_fps, Fraction) else Fraction(str(target_fps))
@@ -414,9 +436,10 @@ class DecodedRecordingExtractor:
         self.gnss_time_basis = gnss_time_basis
         self.use_published_calibration = use_published_calibration
         self.resize_intrinsics = resize_intrinsics
+        self.camera_batch_time_basis = camera_batch_time_basis
 
     def extract_owned(self, bundle: _DecodedBundle) -> OwnedRecordingExtraction:
-        rows = _camera_rows(bundle)
+        rows = _camera_rows(bundle, batch_time_basis=self.camera_batch_time_basis)
         selected_cameras = tuple(video.camera for video in bundle.entry.videos)
         if len(selected_cameras) != len(set(selected_cameras)):
             raise StructuralExtractionError("decoded videos contain duplicate cameras")
@@ -481,7 +504,17 @@ class DecodedRecordingExtractor:
             time_basis=self.gnss_time_basis,
         )
         offsets = sorted({row.batch_offset_ns for row in rows})
-        selection = select_camera_grid(offsets, self.target_fps, self.tolerance_ns)
+        # Producer batch clocks may precede the first video frame. Retain those
+        # signed source offsets, but export only the recording interval >= 0.
+        selection = select_camera_grid(
+            [offset for offset in offsets if offset >= 0], self.target_fps, self.tolerance_ns
+        )
+        selection = GridSelection(
+            selection.entries,
+            selection.misses,
+            tuple(offset for offset in offsets if offset < 0)
+            + selection.unused_batch_timestamps_ns,
+        )
         return self._decode(bundle, by_camera, calibrations, gnss, selection)
 
     def _decode(

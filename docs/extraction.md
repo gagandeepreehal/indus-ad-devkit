@@ -153,11 +153,20 @@ used as a substitute for the relative timeline.
 
 The privacy-transformed GNSS table is authoritative. Valid rows require finite
 `local_enu.local_east_m`, `local_enu.local_north_m`, and `local_enu.local_up_m`,
-`local_enu_origin_offset_ns == 0`, and `published_horizontal_resolution_m == 1.0`. Invalid rows are
+one consistent integer `local_enu_origin_offset_ns` throughout the selected stream,
+and `published_horizontal_resolution_m == 1.0`. The source exporter can use the first
+GNSS fix after video start as its local origin; its published offset and local
+coordinates are preserved without rebasing. Invalid rows without orientation are
+retained with unavailable attitude. Invalid rows are
 preserved as interpolation barriers instead of silently disappearing. Frame-time translation is
 linear interpolation of the precise local axes, while orientation retains shortest-path quaternion
 SLERP and the existing conservative quality rules. Out-of-range frames are invalid; there is no
 clamping or extrapolation.
+
+Signed producer batch offsets before zero are retained in the raw batch and unused
+batch audit. They are excluded from the export target grid because exported scene
+timestamps start at or after recording zero. The grid anchors to the first remaining
+batch; no source timestamps are shifted and no camera clock replaces a batch clock.
 
 Every GNSS row must carry the selected catalog recording ID. Mixed or foreign recording IDs fail
 before interpolation. Recursive metadata inspection rejects calendar/GPS week-day, epoch,
@@ -187,3 +196,11 @@ Decoded extraction similarly fails structurally on catalog/table disagreement, m
 camera or calibration rows, duplicate or unsafe identities, non-integral relative timestamps,
 unexpected video frame counts, invalid local ENU, unsanitized global coordinates, or any artifact
 mutation. A decoded structural or privacy failure is never retried through MCAP.
+
+The integrated source accepts an explicit `camera_batch_time_basis` selection.
+Its default is `batch_time_offset_ns`; `rec_time_offset_ns` uses the existing
+recorded-camera clock for every frame in the build, requiring the same offset
+within each source channel and message index. It does not fill missing producer
+timestamps or switch clocks row by row. Source timestamps remain unchanged.
+Missing diagnostics on quality-flagged GNSS samples are retained as null, including
+uncertainty and quality details; those samples cannot supply interpolated poses.

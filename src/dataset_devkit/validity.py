@@ -466,8 +466,8 @@ def _pose_observations(
     if maximum is not None and maximum > config.gnss.orientation_variance_max:
         orientation_details = dict(interpolation.orientation_uncertainty)
         if interpolation.before is not None and interpolation.after is not None:
-            for key, value in interpolation.before.orientation_uncertainty.items():
-                if interpolation.after.orientation_uncertainty.get(key) == value:
+            for key, value in (interpolation.before.orientation_uncertainty or {}).items():
+                if (interpolation.after.orientation_uncertainty or {}).get(key) == value:
                     orientation_details.setdefault(key, value)
         observed.append(
             _observation(

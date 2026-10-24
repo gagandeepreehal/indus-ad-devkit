@@ -173,10 +173,10 @@ class PrivacyGnssSample:
     latitude_deg: float | None
     longitude_deg: float | None
     height_m: float | None
-    position_uncertainty: Mapping[str, Any]
-    orientation_uncertainty: Mapping[str, Any]
-    quality: Mapping[str, Any]
-    local_enu_origin_offset_ns: Literal[0]
+    position_uncertainty: Mapping[str, Any] | None
+    orientation_uncertainty: Mapping[str, Any] | None
+    quality: Mapping[str, Any] | None
+    local_enu_origin_offset_ns: int
     published_horizontal_resolution_m: float | None
 
     @property
