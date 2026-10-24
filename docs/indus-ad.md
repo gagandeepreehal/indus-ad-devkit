@@ -10,7 +10,7 @@ Schema `2.1` selects `source.type: "indus_ad_hf"` and
 pins the source revision. Six untilted cameras are selected by default;
 `cam_front_tilted` is optional.
 
-The current example pins `ee0e1754964f6af000625fb42d854565b39fec36`, including
+The current example pins `592780554157eb2b38eec1bbba9bb498da5878bb`, including
 the producer's `calibrated_extrinsics` overlay. Its sensor policy is explicit:
 `camera_batch_time_basis: "rec_time_offset_ns"`,
 `gnss_channel: "gnss"`, `gnss_time_basis: "time_offset_ns"`,
@@ -95,7 +95,7 @@ Run the control-only compatibility gate with:
 ```bash
 python tools/check_indus_ad_contract.py \
   --repo-id gagandeepreehal/indus-ad \
-  --revision ee0e1754964f6af000625fb42d854565b39fec36
+  --revision 592780554157eb2b38eec1bbba9bb498da5878bb
 ```
 
 The gate rejects video, archive, and per-recording sensor-table downloads.

@@ -1,0 +1,29 @@
+{
+  "source_revision": "a1f1d72b73984ef129ac8b3d882f9074bc587205",
+  "recordings": 1469,
+  "rechecked": 1469,
+  "metadata_compatible": 1469,
+  "download_errors": 0,
+  "remaining_failure_counts": {},
+  "report_sha256": "fe3bec2dddf44b50b2bf411bd2789930377d01438befe8b8d14f33ad86eb10fe",
+  "scope": "Repaired-reader metadata acceptance only; no video downloads, scene viability or privacy-accuracy claim. Camera rec_timestamp default; main GNSS sensor timestamp retained; untimed quality-flagged messages preserve source-order gaps.",
+  "worker_original_sha256": "68dd39ea75fde656177c0f0510e6b640fd498cc784966d557e280c707a3290c1",
+  "report_annotation": "Reader-policy description corrected after worker completion; check results and input identities unchanged; original worker report retained locally.",
+  "reader_policy": "All recordings: camera rec_time_offset_ns; main gnss time_offset_ns; preserve consistent origin and null invalid diagnostics; untimed quality-flagged source-order gaps excluded; no logger substitution",
+  "input_files": 12865,
+  "input_bytes": 6447004904,
+  "memory": {
+    "budget_bytes": 6000000000,
+    "stop_threshold_bytes": 5000000000,
+    "sampled_peak_rss_bytes": 1440874496,
+    "current_rss_bytes": 228556800,
+    "audit_workers": 1,
+    "limit_exceeded": false,
+    "sample_interval_seconds": 0.25,
+    "scope": "audit worker, supervisor and descendants; excludes the Codex app and other tasks; RSS monitoring is not an OS-enforced app-wide memory limit",
+    "updated_at": "2026-10-24T19:46:14.194745+00:00",
+    "exit_code": 0
+  },
+  "failure_counts": {},
+  "csv_sha256": "85200d53d074468db2b0c5991242ee32b6e85d22be5134e5342bc757097746d2"
+}
