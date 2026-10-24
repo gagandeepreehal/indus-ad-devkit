@@ -270,6 +270,7 @@ def _prepare_indus_ad(
         gnss_time_basis=config.source.gnss_time_basis,
         use_published_calibration=config.source.calibrated_ego_frame is not None,
         resize_intrinsics=config.source.intrinsic_image_transform == "resize",
+        camera_batch_time_basis=config.source.camera_batch_time_basis,
     )
 
     def acquire_one(

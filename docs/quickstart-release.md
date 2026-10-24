@@ -1,6 +1,12 @@
 # Verified bounded first build
 
-The current example selects recording
+## Current release
+
+Version 0.1.2 includes the revised example, pinned to `592780554157eb2b38eec1bbba9bb498da5878bb`. See [current production validation](launch-validation.md) and [source compatibility](source-compatibility.md). The measurements below preserve the original v0.1.1 run and its historical source identifier; they are not new download pins.
+
+## Historical bounded build measurement
+
+The historical measured example selected recording
 `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1` from
 `gagandeepreehal/indus-ad` at immutable dataset revision
 `ee0e1754964f6af000625fb42d854565b39fec36`.
@@ -67,7 +73,7 @@ that wheel but does not alter its immutable release artifacts or tag.
 
 ## Python support and mandatory format check
 
-Version 0.1.1 supports Python 3.12 (`>=3.12,<3.13`). The official nuScenes
+Versions 0.1.1 and 0.1.2 support Python 3.12 (`>=3.12,<3.13`). The official nuScenes
 loader smoke check remains mandatory before an export is published. Internal
 validation alone is not substituted for that check.
 
@@ -80,3 +86,7 @@ this alpha release. Dependencies are not bypassed and the SDK check is not disab
 CI runs the complete tests, strict type/lint checks, schema regeneration,
 package builds and an installed-wheel offline export on Linux and macOS with
 Python 3.12. Local macOS results and remote CI results must be reported separately.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

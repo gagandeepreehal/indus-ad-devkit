@@ -6,7 +6,9 @@ import bisect
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from dataclasses import replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -84,6 +86,15 @@ def _mapping(value: object, label: str) -> Mapping[str, Any]:
     return cast(Mapping[str, Any], value)
 
 
+def _diagnostic_mapping(
+    value: object, label: str, *, is_valid: bool
+) -> Mapping[str, Any] | None:
+    # A quality-flagged sample may omit diagnostics. Preserve that absence.
+    if not is_valid and value is None:
+        return None
+    return _mapping(value, label)
+
+
 def _float(value: object, label: str) -> float:
     if not isinstance(value, float) or not math.isfinite(value):
         raise StructuralExtractionError(f"privacy GNSS {label} must be finite float64")
@@ -96,7 +107,7 @@ def _int(value: object, label: str) -> int:
     return value
 
 
-def _is_forbidden_absolute_time_field(name: str) -> bool:
+def _classify_absolute_time_field(name: str) -> bool:
     separated = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
     folded = separated.casefold()
     if folded in _ALLOWED_RELATIVE_OR_CONTEXT_TIME_FIELDS:
@@ -120,6 +131,17 @@ def _is_forbidden_absolute_time_field(name: str) -> bool:
     }:
         return True
     return compact.endswith("timestamp") or compact.startswith(("epoch", "unixtime"))
+
+
+_cached_absolute_time_field = lru_cache(maxsize=512)(_classify_absolute_time_field)
+
+
+def _is_forbidden_absolute_time_field(name: str) -> bool:
+    # Keys repeat for every GNSS message; cache only bounded-size schema names.
+    # Long untrusted keys retain the same validation without occupying the cache.
+    if len(name) > 128:
+        return _classify_absolute_time_field(name)
+    return _cached_absolute_time_field(name)
 
 
 def _reject_absolute_fields(value: object, location: str = "row") -> None:
@@ -170,7 +192,7 @@ def _normalize_messages(
     expected_recording_id: str,
     channel: GnssChannel | None,
     time_basis: GnssTimeBasis | None,
-) -> list[dict[str, object]]:
+) -> Iterator[dict[str, object]]:
     channels = {row.get("channel") for row in rows}
     if not channels.issubset({"gnss", "rec_gnss"}):
         raise StructuralExtractionError("privacy GNSS contains an unsupported channel")
@@ -184,7 +206,6 @@ def _normalize_messages(
         )
     if channel is not None and channel not in channels:
         raise StructuralExtractionError("selected privacy GNSS channel is absent")
-    normalized: list[dict[str, object]] = []
     for row in rows:
         if row.get("recording_id") != expected_recording_id:
             raise StructuralExtractionError(
@@ -224,10 +245,7 @@ def _normalize_messages(
                 if target in fields:
                     raise StructuralExtractionError("privacy GNSS uncertainty fields are ambiguous")
                 fields[target] = fields.get(source)
-        normalized.append(
-            {"recording_id": row["recording_id"], "recording_offset_ns": offset, **fields}
-        )
-    return normalized
+        yield {"recording_id": row["recording_id"], "recording_offset_ns": offset, **fields}
 
 
 def parse_privacy_gnss(
@@ -247,16 +265,17 @@ def parse_privacy_gnss(
             raise StructuralExtractionError(
                 "privacy GNSS contains missing, extra, or forbidden fields"
             )
-        rows = cast(list[dict[str, object]], parquet.read().to_pylist())
+        source_rows = cast(list[dict[str, object]], parquet.read().to_pylist())
     except StructuralExtractionError:
         raise
     except Exception as error:
         raise StructuralExtractionError("privacy GNSS Parquet is invalid") from error
-    if not rows:
+    if not source_rows:
         raise StructuralExtractionError("privacy GNSS contains no rows")
+    rows: Iterable[dict[str, object]] = source_rows
     if columns in (_ANONYMIZER_COLUMNS, _PUBLISHED_COLUMNS):
         rows = _normalize_messages(
-            rows,
+            source_rows,
             published=columns == _PUBLISHED_COLUMNS,
             expected_recording_id=expected_recording_id,
             channel=channel,
@@ -265,6 +284,8 @@ def parse_privacy_gnss(
 
     samples: list[PrivacyGnssSample] = []
     recording_id: str | None = None
+    recording_origin: int | None = None
+    pending_untimed = 0
     for row in rows:
         _reject_absolute_fields(row)
         row_recording_id = row.get("recording_id")
@@ -282,8 +303,19 @@ def parse_privacy_gnss(
         if not isinstance(is_valid, bool):
             raise StructuralExtractionError("privacy GNSS validity must be boolean")
         origin = _int(row.get("local_enu_origin_offset_ns"), "origin offset")
-        if origin != 0:
-            raise StructuralExtractionError("privacy GNSS local ENU origin offset must be zero")
+        if recording_origin is None:
+            recording_origin = origin
+        elif origin != recording_origin:
+            raise StructuralExtractionError("privacy GNSS local ENU origin offset changes")
+        if row.get("recording_offset_ns") is None and not is_valid:
+            # Retain the gap in source order without assigning a sensor time.
+            pending_untimed += 1
+            if samples:
+                samples[-1] = replace(
+                    samples[-1],
+                    untimed_messages_after=samples[-1].untimed_messages_after + 1,
+                )
+            continue
         coordinate_fields = ("local_enu", "enu", "lat_lon_ht", "published_horizontal_resolution_m")
         if not is_valid and any(row.get(field) is None for field in coordinate_fields):
             if any(row.get(field) is not None for field in coordinate_fields):
@@ -305,20 +337,30 @@ def parse_privacy_gnss(
                     latitude_deg=None,
                     longitude_deg=None,
                     height_m=None,
-                    position_uncertainty=_mapping(
-                        row.get("position_uncertainty"), "position uncertainty"
+                    position_uncertainty=_diagnostic_mapping(
+                        row.get("position_uncertainty"), "position uncertainty", is_valid=is_valid
                     ),
-                    orientation_uncertainty=_mapping(
-                        row.get("orientation_uncertainty"), "orientation uncertainty"
+                    orientation_uncertainty=_diagnostic_mapping(
+                        row.get("orientation_uncertainty"),
+                        "orientation uncertainty",
+                        is_valid=is_valid,
                     ),
-                    quality=_mapping(row.get("quality"), "quality"),
-                    local_enu_origin_offset_ns=0,
+                    quality=_diagnostic_mapping(row.get("quality"), "quality", is_valid=is_valid),
+                    local_enu_origin_offset_ns=origin,
                     published_horizontal_resolution_m=None,
+                    untimed_messages_before=pending_untimed,
                 )
             )
+            pending_untimed = 0
             continue
         local = _mapping(row.get("local_enu"), "local ENU")
-        orientation = _mapping(row.get("orientation"), "orientation")
+        # Invalid fixes remain timed interpolation barriers even if the receiver
+        # supplied coordinates but no attitude. Never synthesize an orientation.
+        orientation = (
+            None
+            if not is_valid and row.get("orientation") is None
+            else _mapping(row.get("orientation"), "orientation")
+        )
         published = _mapping(row.get("enu"), "published ENU")
         lat_lon_ht = _mapping(row.get("lat_lon_ht"), "latitude/longitude/height")
         resolution = _float(row.get("published_horizontal_resolution_m"), "published resolution")
@@ -344,25 +386,33 @@ def parse_privacy_gnss(
                 local_east_m=_float(local.get("local_east_m"), "local east"),
                 local_north_m=_float(local.get("local_north_m"), "local north"),
                 local_up_m=_float(local.get("local_up_m"), "local up"),
-                roll_rad=_float(orientation.get("roll_rad"), "roll"),
-                pitch_rad=_float(orientation.get("pitch_rad"), "pitch"),
-                yaw_rad=_float(orientation.get("yaw_rad"), "yaw"),
+                roll_rad=(
+                    None if orientation is None else _float(orientation.get("roll_rad"), "roll")
+                ),
+                pitch_rad=(
+                    None if orientation is None else _float(orientation.get("pitch_rad"), "pitch")
+                ),
+                yaw_rad=None if orientation is None else _float(orientation.get("yaw_rad"), "yaw"),
                 published_east_m=east,
                 published_north_m=north,
                 latitude_deg=published_latitude,
                 longitude_deg=published_longitude,
                 height_m=_float(lat_lon_ht.get("height_m"), "height"),
-                position_uncertainty=_mapping(
-                    row.get("position_uncertainty"), "position uncertainty"
+                position_uncertainty=_diagnostic_mapping(
+                    row.get("position_uncertainty"), "position uncertainty", is_valid=is_valid
                 ),
-                orientation_uncertainty=_mapping(
-                    row.get("orientation_uncertainty"), "orientation uncertainty"
+                orientation_uncertainty=_diagnostic_mapping(
+                    row.get("orientation_uncertainty"), "orientation uncertainty", is_valid=is_valid
                 ),
-                quality=_mapping(row.get("quality"), "quality"),
-                local_enu_origin_offset_ns=0,
+                quality=_diagnostic_mapping(row.get("quality"), "quality", is_valid=is_valid),
+                local_enu_origin_offset_ns=origin,
                 published_horizontal_resolution_m=resolution,
+                untimed_messages_before=pending_untimed,
             )
         )
+        pending_untimed = 0
+    if not samples:
+        raise StructuralExtractionError("privacy GNSS has no timestamped samples")
     offsets = tuple(sample.recording_offset_ns for sample in samples)
     if any(current <= previous for previous, current in zip(offsets, offsets[1:], strict=False)):
         raise StructuralExtractionError(
@@ -395,6 +445,8 @@ def interpolate_privacy_gnss(
     """Interpolate precise local ENU without leading or trailing extrapolation."""
     if not samples:
         return _unavailable(recording_offset_ns, None, None)
+    if len({sample.local_enu_origin_offset_ns for sample in samples}) != 1:
+        raise StructuralExtractionError("privacy GNSS local ENU origin offset changes")
     offsets = tuple(sample.recording_offset_ns for sample in samples)
     if any(current <= previous for previous, current in zip(offsets, offsets[1:], strict=False)):
         raise StructuralExtractionError(
@@ -413,6 +465,11 @@ def interpolate_privacy_gnss(
         fraction = (recording_offset_ns - before.recording_offset_ns) / (
             after.recording_offset_ns - before.recording_offset_ns
         )
+
+    if before is not after and (
+        before.untimed_messages_after or after.untimed_messages_before
+    ):
+        return _unavailable(recording_offset_ns, before, after)
 
     required = (
         before.local_east_m,
@@ -477,6 +534,12 @@ def interpolate_privacy_gnss(
     values = (*local, height, published_east, published_north, latitude, longitude, *quaternion)
     if not all(math.isfinite(value) for value in values):
         raise StructuralExtractionError("privacy GNSS interpolation produced non-finite values")
+    assert before.quality is not None
+    assert after.quality is not None
+    assert before.position_uncertainty is not None
+    assert after.position_uncertainty is not None
+    assert before.orientation_uncertainty is not None
+    assert after.orientation_uncertainty is not None
     position_uncertainty, position_uninterpolated = _numeric_interpolation(
         before.position_uncertainty, after.position_uncertainty, fraction
     )

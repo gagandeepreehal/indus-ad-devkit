@@ -173,11 +173,13 @@ class PrivacyGnssSample:
     latitude_deg: float | None
     longitude_deg: float | None
     height_m: float | None
-    position_uncertainty: Mapping[str, Any]
-    orientation_uncertainty: Mapping[str, Any]
-    quality: Mapping[str, Any]
-    local_enu_origin_offset_ns: Literal[0]
+    position_uncertainty: Mapping[str, Any] | None
+    orientation_uncertainty: Mapping[str, Any] | None
+    quality: Mapping[str, Any] | None
+    local_enu_origin_offset_ns: int
     published_horizontal_resolution_m: float | None
+    untimed_messages_before: int = 0
+    untimed_messages_after: int = 0
 
     @property
     def timestamp_ns(self) -> int:
@@ -186,6 +188,7 @@ class PrivacyGnssSample:
 
     @property
     def rec_timestamp_ns(self) -> int:
+        """Generic compatibility alias, not the source payload rec_timestamp."""
         return self.recording_offset_ns
 
     def __post_init__(self) -> None:

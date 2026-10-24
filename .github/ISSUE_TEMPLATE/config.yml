@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Dataset access and usage
+    url: https://huggingface.co/datasets/gagandeepreehal/indus-ad
+    about: Request manually reviewed access and read dataset terms and limitations.
+  - name: Private privacy or takedown report
+    url: mailto:indus-ad@gagandeepreehal.com
+    about: Send identifying details privately to the publisher.

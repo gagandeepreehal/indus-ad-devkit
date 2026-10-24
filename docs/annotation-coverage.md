@@ -29,7 +29,7 @@ After installing the devkit and authenticating with an approved Hugging Face acc
 ```bash
 python tools/audit_indus_ad_coverage.py \
   --repo-id gagandeepreehal/indus-ad \
-  --revision ed3f724e75527b5c888c1ad52787d5e82949328e \
+  --revision 592780554157eb2b38eec1bbba9bb498da5878bb \
   --cache-dir var/coverage-cache \
   --output-dir var/coverage-report
 ```
@@ -51,7 +51,7 @@ from huggingface_hub import hf_hub_download
 path = hf_hub_download(
     repo_id="gagandeepreehal/indus-ad",
     repo_type="dataset",
-    revision="ed3f724e75527b5c888c1ad52787d5e82949328e",
+    revision="592780554157eb2b38eec1bbba9bb498da5878bb",
     filename="data/viewer/camera-annotations/part-00000.parquet",
 )
 rows = pq.ParquetFile(path).read().to_pylist()
@@ -92,3 +92,9 @@ Dense assets default to `none`; their export rows retain references, while
 `selected_frames` acquires and validates the relevant archives before export.
 Selecting one member can require downloading its entire archive. Keep that opt-in
 separate from the bounded camera-video quickstart.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.
+
+Current examples use consolidated revision `592780554157eb2b38eec1bbba9bb498da5878bb`. The earlier audit revision remains a historical provenance identifier; the source data is preserved in the consolidated tree.
