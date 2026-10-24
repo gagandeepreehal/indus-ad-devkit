@@ -16,6 +16,8 @@ Publisher-declared dataset license:
 The devkit software has its separate license in [LICENSE.md](../../LICENSE.md).
 
 The surround view is illustrative. The figures in the layer diagram describe the
-source release, not annotations on every frame or an authored benchmark. The source
-card records pending privacy/legal and launch approval. These previews do not
-independently establish privacy clearance or anonymization performance.
+source release, not annotations on every frame or an authored benchmark. The publisher
+handles privacy reports and recording withdrawals manually via
+[indus-ad@gagandeepreehal.com](mailto:indus-ad@gagandeepreehal.com). The publisher
+confirmed the recommended representative final-clip privacy review complete on
+24 October 2026; these illustrative previews are not a detector-performance evaluation.
