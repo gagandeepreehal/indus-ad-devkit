@@ -1,5 +1,12 @@
 # Camera and GNSS extraction
 
+For the current integrated INDUS-AD release, use schema `2.1`: every camera
+uses payload `rec_timestamp` (`rec_time_offset_ns`) for synchronization, pose
+queries and export time; main `gnss` uses payload `timestamp` (`time_offset_ns`).
+Untimed quality-flagged GNSS portions are excluded and affected edges trimmed.
+See [exact fields and trimming](timing-and-trimming.md). The native MCAP and
+legacy schema sections below describe separate source contracts.
+
 `dataset_devkit.extraction.RecordingExtractor` is the restricted-raw MCAP boundary between verified
 acquisition and validity/scene/export policy. It reads a local MCAP, stages selected camera images,
 and returns immutable typed records. It does not decide whether timestamp gaps, GNSS quality, or

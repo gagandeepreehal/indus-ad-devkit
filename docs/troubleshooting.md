@@ -22,11 +22,14 @@ changing quality thresholds. A `train` storage label is not a benchmark split.
 
 ## Source timing or GNSS parsing fails
 
-The adapter preserves signed producer batch offsets and consistent nonzero
+The adapter uses recorded-camera time for all integrated recordings and
+preserves consistent nonzero
 local-ENU origin offsets. Batches before recording zero remain in the raw audit
 and are excluded from the export grid. Invalid GNSS fixes remain interpolation
-barriers even when they have no attitude. Missing selected-clock timestamps,
-changing origins or malformed valid fixes still fail validation. A parser
+barriers even when they have no attitude. Untimed quality-flagged messages
+mark excluded portions instead of rejecting the whole recording. Affected
+leading portions are trimmed from the export. Missing timestamps on valid
+samples, changing origins or malformed valid fixes still fail validation. A parser
 failure does not mean the video is corrupt. Use the documented source revision
 and explicit GNSS clock selection. Do not substitute camera clocks, rebase origins,
 or invent poses to make an export pass. Include the recording ID, dataset

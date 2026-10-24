@@ -1,5 +1,8 @@
 # Published sensor schema compatibility, 23 October 2026
 
+This is a historical inspection. Current integrated camera and GNSS timing
+and partial-recording handling are documented in [timing and trimming](timing-and-trimming.md).
+
 This change targets INDUS-AD revision
 `ee0e1754964f6af000625fb42d854565b39fec36`. It does not modify source dataset
 payloads, privacy transformations, dataset access, or annotations.
