@@ -1,8 +1,9 @@
 # INDUS AD DEVKIT
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
-![Platform: POSIX](https://img.shields.io/badge/platform-POSIX-lightgrey)
+[![Devkit checks](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml)
+[![Release: v0.1.1 alpha prerelease](https://img.shields.io/badge/release-v0.1.1%20alpha%20prerelease-orange)](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
+![Platform: Linux and macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE.md)
 
 Build reproducible, nuScenes-compatible subsets from INDUS-AD driving datasets.
@@ -12,16 +13,55 @@ applies scenario quotas, and exports validated train/test splits with provenance
 Integrated INDUS-AD support includes camera, semantic, depth, weather, and optional
 GNSS weak pseudo-labels. These model outputs remain separate from human labels.
 
-![Publisher-provided example of six camera perspectives in Bengaluru traffic](docs/assets/indus-ad-surround-view.png)
-
-*Illustrative surround view from the INDUS-AD dataset card; not a calibrated camera-layout diagram
-or independent evidence of anonymization performance. [Image source and license](docs/assets/SOURCES.md).*
-
 > Compatibility refers to the nuScenes file structure and supported loader behavior.
 > This project is independent of Motional and does not reproduce the nuScenes
 > sensor suite, annotations, maps, or benchmarks.
 
+## Quickstart
+
+Requires Python 3.12 (`>=3.12,<3.13`) and Linux or macOS. First request access to
+[INDUS-AD on Hugging Face](https://huggingface.co/datasets/gagandeepreehal/indus-ad)
+and wait for approval. Keep credentials out of configuration files.
+
+The example downloads about **209 MB / 199 MiB** of source artifacts. Allow a
+**2 GiB working budget plus the Python environment**; installation and network
+overhead are additional. Dense semantic/depth archives are disabled.
+
+Run from a fresh checkout:
+
+```bash
+git clone https://github.com/gagandeepreehal/indus-ad-devkit.git
+cd indus-ad-devkit
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+hf auth login
+cp examples/indus_ad_v21_config.json dataset_config.json
+cp examples/indus_ad_annotations.jsonl annotations.jsonl
+dataset-devkit build --config dataset_config.json
+dataset-devkit validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+dataset-devkit inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+```
+
+Expected output: **1 scene, 48 samples and 288 camera images**, with 2 joined
+camera pseudo-label rows and 4 dense references. A verified macOS build using
+cached source artifacts took about 60 seconds; cold downloads take additional time.
+See [quickstart measurements, provenance and limits](docs/quickstart-release.md).
+
+The commands install the current checkout. The verified production run used the
+[v0.1.1 wheel](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
+with the **newer example configuration now on `main`**. The example bundled with
+the immutable v0.1.1 tag differs; use the configuration from this checkout.
+
+The mandatory official nuScenes loader check depends on NumPy <2;
+Python 3.13/3.14 are unsupported until that dependency chain is compatible.
+
 ## Source dataset
+
+![Publisher-provided example of six camera perspectives in Bengaluru traffic](docs/assets/indus-ad-surround-view.png)
+
+*Illustrative surround view from the INDUS-AD dataset card; not a calibrated camera-layout diagram
+or independent evidence of anonymization performance. [Image source and license](docs/assets/SOURCES.md).*
 
 ![Seven-camera and Ouster OS1-128 LiDAR configuration](docs/assets/car_seven_cameras_lidar_corrected.png)
 
@@ -52,23 +92,6 @@ the publisher handles privacy concerns and recording withdrawals manually throug
 
 *Publisher-provided dataset-layer diagram. [Image source and license](docs/assets/SOURCES.md).*
 
-## Setup
-
-Requires Python 3.12 (`>=3.12,<3.13`) and Linux or macOS.
-The mandatory official nuScenes loader check currently depends on NumPy <2;
-Python 3.13/3.14 are unsupported until that dependency chain is compatible.
-
-```bash
-git clone https://github.com/gagandeepreehal/indus-ad-devkit.git
-cd indus-ad-devkit
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-```
-
-For gated or private datasets, obtain access and authenticate with `hf auth login`.
-Keep credentials out of configuration files.
-
 ## Choose a source
 
 All sources require an exact repository ID and a full 40-character commit SHA.
@@ -83,38 +106,12 @@ INDUS-AD and decoded V2 are classified as `privacy_transformed`; original MCAP i
 restricted raw (`restricted_raw`) and carries no anonymization claim. Manifest verification
 checks published evidence and integrity; it does not independently rerun the anonymizer.
 
-## Build an INDUS-AD subset
-
-```bash
-cp examples/indus_ad_v21_config.json dataset_config.json
-cp examples/indus_ad_annotations.jsonl annotations.jsonl
-```
+## Configure a subset
 
 The example pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36`
 and selects recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`.
 It selects exactly one eligible scene through an explicit `quickstart` quota of 1;
 an empty scenario-rules list selects no scenes. Dense archives are disabled.
-
-- **Download:** 208,664,490 unique artifact bytes (about 209 MB / 199 MiB):
-  190,924,636 video bytes, 499,082 recording-table bytes and 17,240,772 shared controls.
-  Network overhead and package installation are additional.
-- **Disk:** allow a 2 GiB working budget plus the Python environment. The successful
-  cached run sampled a 382,150,413-byte peak in working-file lengths; this excludes
-  the environment and is not a guaranteed instantaneous peak or allocation bound.
-- **Runtime:** the successful cached-artifact build took 59.7 seconds on macOS arm64 /
-  Python 3.12.14. Cold downloads and installation are additional; other machines vary.
-- **Verified output:** 1 scene, 48 samples and 288 camera images, with 2 joined camera
-  labels and 4 dense references. Build, validation, inspection and mandatory official
-  nuScenes loading passed using the published v0.1.1 wheel. Dense payloads were disabled.
-- **Output directory:** `var/indus-ad-datasets/v1.0-trainval` for a configuration copied
-  to the repository root. Paths are relative to the configuration file.
-
-See [quickstart provenance and limits](docs/quickstart-release.md).
-Review camera and annotation layers, sampling rate, scene rules, quotas, and paths before running:
-
-```bash
-dataset-devkit build --config dataset_config.json
-```
 
 The human annotation file is optional input content but must exist at its configured
 path. The INDUS-AD template is empty and supplies no invented human labels.
@@ -153,11 +150,12 @@ Dense payloads stay in the verified cache; exported rows retain source reference
 and materialization state. Dense acquisition failures block publication.
 
 ```bash
-dataset-devkit validate --dataroot DATASET --version v1.0-trainval
-dataset-devkit inspect --dataroot DATASET --version v1.0-trainval
+dataset-devkit validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+dataset-devkit inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
 ```
 
-Use the published dataroot as `DATASET`. Outputs are read-only and existing
+These commands use the quickstart output path; adjust it if you change the configuration.
+Paths are relative to the configuration file. Outputs are read-only and existing
 destinations are never overwritten. Rebuild into a new destination to change content.
 Commands emit JSON; configuration errors exit `2`, and operational/validation errors exit `1`.
 
@@ -166,7 +164,7 @@ Commands emit JSON; configuration errors exit `2`, and operational/validation er
 ```python
 from dataset_devkit import Dataset
 
-dataset = Dataset("DATASET")
+dataset = Dataset("var/indus-ad-datasets/v1.0-trainval")
 scene = dataset.table("scene")[0]
 sample = dataset.scene_samples(scene["token"])[0]
 front = dataset.camera(sample["token"], "CAM_FRONT")
@@ -184,6 +182,8 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 
 | Guide | Contents |
 | --- | --- |
+| [Quickstart verification](docs/quickstart-release.md) | Measured download, disk, runtime, and release provenance |
+| [Annotation coverage](docs/annotation-coverage.md) | Sparse pseudo-label coverage and exact joins |
 | [Integrated INDUS-AD](docs/indus-ad.md) | Annotation layers, joins, dense references, and companion GNSS |
 | [Published sensor acceptance](docs/published-sensor-acceptance.md) | Corrected calibration/GNSS compatibility and verification limits |
 | [Configuration](docs/configuration.md) | Sources, paths, sensors, and policies |
@@ -231,5 +231,11 @@ The fixture destination must be absent; the script prints the published dataroot
 Cite the source dataset release using its Hugging Face dataset card, and identify
 this devkit by repository URL and the release tag or commit used.
 
-The software uses the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+The **devkit software** uses the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 Commercial use requires a separate license. See [NOTICE](NOTICE) for copyright information.
+
+The **source dataset and publisher-provided preview assets** have a separate
+[CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/).
+See the [dataset card](https://huggingface.co/datasets/gagandeepreehal/indus-ad)
+and [asset attribution](docs/assets/SOURCES.md) for scope and attribution.
+The software license does not replace the dataset's license or access requirements.
