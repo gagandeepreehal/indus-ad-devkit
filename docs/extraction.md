@@ -1,5 +1,12 @@
 # Camera and GNSS extraction
 
+For the current integrated INDUS-AD release, use schema `2.1`: every camera
+uses payload `rec_timestamp` (`rec_time_offset_ns`) for synchronization, pose
+queries and export time; main `gnss` uses payload `timestamp` (`time_offset_ns`).
+Untimed quality-flagged GNSS portions are excluded and affected edges trimmed.
+See [exact fields and trimming](timing-and-trimming.md). The native MCAP and
+legacy schema sections below describe separate source contracts.
+
 `dataset_devkit.extraction.RecordingExtractor` is the restricted-raw MCAP boundary between verified
 acquisition and validity/scene/export policy. It reads a local MCAP, stages selected camera images,
 and returns immutable typed records. It does not decide whether timestamp gaps, GNSS quality, or
@@ -153,11 +160,20 @@ used as a substitute for the relative timeline.
 
 The privacy-transformed GNSS table is authoritative. Valid rows require finite
 `local_enu.local_east_m`, `local_enu.local_north_m`, and `local_enu.local_up_m`,
-`local_enu_origin_offset_ns == 0`, and `published_horizontal_resolution_m == 1.0`. Invalid rows are
+one consistent integer `local_enu_origin_offset_ns` throughout the selected stream,
+and `published_horizontal_resolution_m == 1.0`. The source exporter can use the first
+GNSS fix after video start as its local origin; its published offset and local
+coordinates are preserved without rebasing. Invalid rows without orientation are
+retained with unavailable attitude. Invalid rows are
 preserved as interpolation barriers instead of silently disappearing. Frame-time translation is
 linear interpolation of the precise local axes, while orientation retains shortest-path quaternion
 SLERP and the existing conservative quality rules. Out-of-range frames are invalid; there is no
 clamping or extrapolation.
+
+Signed producer batch offsets before zero are retained in the raw batch and unused
+batch audit. They are excluded from the export target grid because exported scene
+timestamps start at or after recording zero. The grid anchors to the first remaining
+batch; no source timestamps are shifted and no camera clock replaces a batch clock.
 
 Every GNSS row must carry the selected catalog recording ID. Mixed or foreign recording IDs fail
 before interpolation. Recursive metadata inspection rejects calendar/GPS week-day, epoch,
@@ -187,3 +203,15 @@ Decoded extraction similarly fails structurally on catalog/table disagreement, m
 camera or calibration rows, duplicate or unsafe identities, non-integral relative timestamps,
 unexpected video frame counts, invalid local ENU, unsanitized global coordinates, or any artifact
 mutation. A decoded structural or privacy failure is never retried through MCAP.
+
+The integrated source accepts an explicit `camera_batch_time_basis` selection.
+Its default is `rec_time_offset_ns`, which uses the existing
+recorded-camera clock for every frame in the build, requiring the same offset
+within each source channel and message index. It does not fill missing producer
+timestamps or switch clocks row by row. Source timestamps remain unchanged.
+Missing diagnostics on quality-flagged GNSS samples are retained as null, including
+uncertainty and quality details; those samples cannot supply interpolated poses.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

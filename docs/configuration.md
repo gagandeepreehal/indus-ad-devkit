@@ -1,5 +1,12 @@
 # Configuration
 
+For the current integrated INDUS-AD release, use schema `2.1`: every camera
+uses payload `rec_timestamp` (`rec_time_offset_ns`) for synchronization, pose
+queries and export time; main `gnss` uses payload `timestamp` (`time_offset_ns`).
+Untimed quality-flagged GNSS portions are excluded and affected edges trimmed.
+See [exact fields and trimming](timing-and-trimming.md). The native MCAP and
+legacy schema sections below describe separate source contracts.
+
 `dataset_config.json` is validated by the strict, versioned Pydantic `GlobalConfig` model. Schema
 `"1.0"` is the legacy MCAP form, schema `"2.0"` selects decoded V2, and schema `"2.1"`
 selects integrated INDUS-AD. Unknown keys are rejected. Relative paths resolve from
@@ -180,3 +187,7 @@ PYTHONPATH=src python -c 'from pathlib import Path; from dataset_devkit.config i
 PYTHONPATH=src python -m dataset_devkit.schema
 pytest tests/test_schema.py
 ```
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

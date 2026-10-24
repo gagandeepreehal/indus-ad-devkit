@@ -1,7 +1,8 @@
 # Integrated INDUS-AD workflow
 
-Copy `examples/indus_ad_v21_config.json` and `examples/annotations.jsonl` to your
-working directory. Review the recording/split selection, cameras, scene rules,
+Copy `examples/indus_ad_v21_config.json` to `dataset_config.json` and the empty
+`examples/indus_ad_annotations.jsonl` to `annotations.jsonl` in your working
+directory. Review the recording/split selection, cameras, scene rules,
 quotas, and output paths before running `dataset-devkit build --config CONFIG`.
 
 Schema `2.1` selects `source.type: "indus_ad_hf"` and
@@ -9,8 +10,9 @@ Schema `2.1` selects `source.type: "indus_ad_hf"` and
 pins the source revision. Six untilted cameras are selected by default;
 `cam_front_tilted` is optional.
 
-The current example pins `ee0e1754964f6af000625fb42d854565b39fec36`, including
+The current example pins `592780554157eb2b38eec1bbba9bb498da5878bb`, including
 the producer's `calibrated_extrinsics` overlay. Its sensor policy is explicit:
+`camera_batch_time_basis: "rec_time_offset_ns"`,
 `gnss_channel: "gnss"`, `gnss_time_basis: "time_offset_ns"`,
 `calibrated_ego_frame: "front_camera_x_forward_y_left_z_up"`, and
 `intrinsic_image_transform: "resize"`. The publisher selected the live `gnss`
@@ -28,11 +30,14 @@ calibration before deduplication. It never falls back to the unverified legacy
 `fields_json.extrinsic` vectors. Intrinsics are scaled only under the explicit
 pure-resize policy; distortion coefficients remain unchanged.
 
-Published GNSS tables require an explicit channel and time basis. Streams are
-filtered before interpolation and never merged. Sensor uncertainty/quality fields
-are retained. Invalid coordinate-bearing samples remain invalid interpolation
-barriers. Unknown source versions, duplicate selected timestamps, missing selected
-times, and absolute-time fields are rejected.
+The integrated source defaults to main `gnss` and sensor `time_offset_ns`, and
+camera timing defaults to `rec_time_offset_ns` for every recording. Streams are
+filtered before interpolation and never merged. Untimed quality-flagged GNSS
+messages define excluded portions: affected edges are trimmed and internal gaps
+are not interpolated across. Missing diagnostics remain null. Invalid timed
+samples remain barriers. Unknown versions, duplicate timed samples, missing
+times on valid samples, and absolute-time fields are rejected. See
+[timing and trimming](timing-and-trimming.md).
 
 The adapter verifies agreement among metadata, video Viewer, video integrity, and
 privacy-release controls. Acquired video bytes must match both the pinned tree
@@ -90,7 +95,7 @@ Run the control-only compatibility gate with:
 ```bash
 python tools/check_indus_ad_contract.py \
   --repo-id gagandeepreehal/indus-ad \
-  --revision ee0e1754964f6af000625fb42d854565b39fec36
+  --revision 592780554157eb2b38eec1bbba9bb498da5878bb
 ```
 
 The gate rejects video, archive, and per-recording sensor-table downloads.
@@ -103,3 +108,7 @@ files below `data/` must follow the exact companion schema. The adapter verifies
 their source revision, recording ownership, relative bounds, and unique window
 identities against the selected sensor recording. A production companion release
 is not configured in the example.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

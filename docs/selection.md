@@ -98,3 +98,7 @@ they do not construct a deep-copied duplicate candidate array.
 Copy [`examples/scenario_templates.json`](../examples/scenario_templates.json) for the canonical
 Straight, Stopping, Left Turn, Right Turn, Left Curvature, Right Curvature, and annotation-label
 rules. Quotas are explicit zero placeholders and must be replaced for a selecting configuration.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

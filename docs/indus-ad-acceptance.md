@@ -1,5 +1,8 @@
 # INDUS-AD implementation acceptance, 2026-10-15
 
+This is a historical inspection. Current integrated camera and GNSS timing
+and partial-recording handling are documented in [timing and trimming](timing-and-trimming.md).
+
 The feature branch `feat/indus-ad-integrated-annotations` implements the additive
 schema 2.1 integrated backend. It includes pinned contract verification, strict
 weak-label parsing, selective acquisition, exact camera-frame checks, selected
@@ -47,3 +50,5 @@ The checked-in design and implementation plan are historical planning documents.
 Use this acceptance note and `docs/indus-ad.md` for the implemented behavior and its
 verification limits. Source repositories and the user's main checkout were not
 published or replaced by this work.
+
+This note preserves a historical inspection. Current acquisition examples use the consolidated source revision in `examples/indus_ad_v21_config.json`; original identifiers and file hashes above are retained as provenance.

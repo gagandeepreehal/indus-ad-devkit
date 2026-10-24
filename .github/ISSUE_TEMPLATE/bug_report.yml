@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a reproducible devkit problem
+body:
+  - type: markdown
+    attributes:
+      value: "For privacy or takedown concerns, email indus-ad@gagandeepreehal.com instead of posting identifying details publicly."
+  - type: input
+    id: version
+    attributes:
+      label: Devkit release or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and Python version
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Source dataset revision
+      description: Include the immutable revision and date-free recording ID, if relevant.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction, expected result, and actual result
+      description: Include a minimal configuration and relevant error text. Remove tokens, credentials, precise location and private paths.
+    validations:
+      required: true

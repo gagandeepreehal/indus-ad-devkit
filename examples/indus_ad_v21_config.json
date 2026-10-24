@@ -4,7 +4,7 @@
     "type": "indus_ad_hf",
     "contract": "indus_ad_integrated_v1",
     "repo_id": "gagandeepreehal/indus-ad",
-    "revision": "ee0e1754964f6af000625fb42d854565b39fec36",
+    "revision": "592780554157eb2b38eec1bbba9bb498da5878bb",
     "recording_ids": [
       "17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1"
     ],
@@ -33,7 +33,8 @@
     "gnss_channel": "gnss",
     "gnss_time_basis": "time_offset_ns",
     "calibrated_ego_frame": "front_camera_x_forward_y_left_z_up",
-    "intrinsic_image_transform": "resize"
+    "intrinsic_image_transform": "resize",
+    "camera_batch_time_basis": "rec_time_offset_ns"
   },
   "paths": {
     "work_dir": "var/indus-ad-work",
