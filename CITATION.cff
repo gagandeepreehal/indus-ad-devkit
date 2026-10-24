@@ -1,9 +1,9 @@
 cff-version: 1.2.0
 message: "Cite this software by release or commit; cite the source dataset separately using its Hugging Face citation."
 type: software
-title: "INDUS AD DEVKIT"
+title: "Indus-AD Devkit"
 authors:
-  - name: "INDUS AD DEVKIT maintainers"
+  - name: "Gagandeep Reehal"
 version: 0.1.2
 license: PolyForm-Noncommercial-1.0.0
 repository-code: "https://github.com/gagandeepreehal/indus-ad-devkit"
