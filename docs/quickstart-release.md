@@ -36,8 +36,9 @@ To expand the build deliberately, replace `source.recording_ids` with specific
 IDs. An empty list selects every recording matching `source.splits`; the current
 train split is a storage label, not an authored evaluation benchmark.
 
-Release v0.1.1 is being prepared as a draft. A draft is not a published stable
-release, final dataset launch approval, or proof of production-video validation.
+Release [v0.1.1](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
+was published on 24 October 2026 as an alpha prerelease. Software publication
+does not constitute final dataset launch approval.
 
 ## Python support and mandatory format check
 
@@ -49,7 +50,7 @@ The current [official SDK dependencies](https://github.com/nutonomy/nuscenes-dev
 require NumPy <2. Wheel-only dependency checks for Python 3.13 and 3.14 cannot
 resolve NumPy 1.x; attempting NumPy 2 also conflicts with the official SDK's
 requirements. Newer Python support was investigated but is not claimed for
-this draft. Dependencies are not bypassed and the SDK check is not disabled.
+this alpha release. Dependencies are not bypassed and the SDK check is not disabled.
 
 CI runs the complete tests, strict type/lint checks, schema regeneration,
 package builds and an installed-wheel offline export on Linux and macOS with

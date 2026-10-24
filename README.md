@@ -44,7 +44,8 @@ image-quality pseudo-labels joined by `recording_id`.
 Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/8983a2b9852d7109b97c5c29dd0482fa9e7e92bb/README.md),
 checked 16 October 2026. Its `train` split is a storage/API label, not an authored benchmark split.
 The devkit creates its own derived train/test split. Dataset access requires manual approval;
-the card reports privacy/legal and launch approval as pending.
+the publisher approved the privacy/access decision on 23 October 2026. Final dataset
+launch approval remains pending; see the current dataset privacy policy.
 
 ![INDUS-AD video, GNSS and motion, pseudo-labels, and dense semantic/depth layers joined by recording ID](docs/assets/indus-ad-dataset-layers.png)
 
@@ -121,6 +122,10 @@ The pipeline verifies selected artifacts, samples frames, builds scenes, applies
 filters and seeded scenario quotas, and assigns train/test splits. Strict quota
 shortfalls fail the build. For transformed sources, trajectories and motion features
 use precise recording-local ENU; rounded global coordinates provide context only.
+
+See [measured annotation coverage and exact-join examples](docs/annotation-coverage.md).
+A regular sampling grid can retain no labels from a sparsely annotated recording;
+inspect the export contract's `join_audit` before using it for supervision.
 
 Six untilted cameras are selected by default; `cam_front_tilted` is optional. Dense
 semantic/depth payloads are metadata-only by default. `selected_frames` modes require

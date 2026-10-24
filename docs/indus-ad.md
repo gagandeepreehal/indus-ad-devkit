@@ -45,6 +45,10 @@ recording-relative nanoseconds. Dense references also retain frame index and fra
 ID. GNSS windows use recording-relative bounds. Trajectories and motion features
 use precise per-recording local ENU.
 
+See [annotation coverage](annotation-coverage.md) for measured per-camera availability,
+a real source-label example, and export join auditing. Regular frame sampling does
+not guarantee that any sparse source label survives the exact join.
+
 Model outputs are machine-generated weak pseudo-labels. Human scene labels remain
 in `mz_extensions/annotations.json`; official `sample_annotation.json` is empty.
 The integrated export adds:
