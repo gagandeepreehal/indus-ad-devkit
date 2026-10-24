@@ -46,5 +46,6 @@ jobs:
           python -m venv "$RUNNER_TEMP/wheel-check"
           "$RUNNER_TEMP/wheel-check/bin/python" -m pip install dist/*.whl
           cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-check/bin/indus-ad" --help
           "$RUNNER_TEMP/wheel-check/bin/dataset-devkit" --help
           "$RUNNER_TEMP/wheel-check/bin/python" "$GITHUB_WORKSPACE/tools/decoded_fixture_smoke.py" "$RUNNER_TEMP/decoded-fixture"
