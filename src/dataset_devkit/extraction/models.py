@@ -188,6 +188,7 @@ class PrivacyGnssSample:
 
     @property
     def rec_timestamp_ns(self) -> int:
+        """Generic compatibility alias, not the source payload rec_timestamp."""
         return self.recording_offset_ns
 
     def __post_init__(self) -> None:

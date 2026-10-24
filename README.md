@@ -198,8 +198,10 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 
 ## Camera timing and partial recordings
 
-Cameras use payload **`rec_timestamp`** (`rec_time_offset_ns`) by default for
-synchronization and exported timestamps. Main **`gnss`** uses its sensor
+For every INDUS-AD recording, cameras use payload **`rec_timestamp`**
+(`rec_time_offset_ns`) by default for synchronization, frame selection, ego-pose
+queries and exported timestamps. This applies even when the producer timestamp is
+present; it is not a fallback limited to recordings with missing producer time. Main **`gnss`** uses its sensor
 **`timestamp`** (`time_offset_ns`), preserving the original mz-datagen convention.
 Untimed quality-flagged GNSS messages mark excluded gaps rather than causing
 whole-recording rejection. Affected leading portions are trimmed from the export;
