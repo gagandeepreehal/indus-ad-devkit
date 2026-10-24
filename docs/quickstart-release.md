@@ -63,8 +63,7 @@ benchmark. Unsupported source timing/origin layouts fail closed.
 
 Release [v0.1.1](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
 was published on 24 October 2026 as an alpha prerelease. This newer example uses
-that wheel but does not alter its immutable release artifacts or tag. Software
-publication and quickstart verification do not constitute final dataset launch approval.
+that wheel but does not alter its immutable release artifacts or tag.
 
 ## Python support and mandatory format check
 
