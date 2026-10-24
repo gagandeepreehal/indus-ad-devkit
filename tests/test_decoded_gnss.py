@@ -182,7 +182,7 @@ def test_anonymizer_invalid_gnss_row_is_an_interpolation_barrier(tmp_path: Path)
     assert not interpolate_privacy_gnss(samples, 1_000_000_000).available
 
 
-def test_privacy_gnss_rejects_nonzero_origin_offset(tmp_path: Path) -> None:
+def test_privacy_gnss_rejects_changing_origin_offset(tmp_path: Path) -> None:
     fixture = write_decoded_fixture(tmp_path)
     path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
     rows = pq.ParquetFile(path).read().to_pylist()
@@ -191,6 +191,48 @@ def test_privacy_gnss_rejects_nonzero_origin_offset(tmp_path: Path) -> None:
 
     with pytest.raises(StructuralExtractionError, match="origin offset"):
         parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+
+
+def test_privacy_gnss_preserves_nonzero_origin_without_rebasing(tmp_path: Path) -> None:
+    fixture = write_decoded_fixture(tmp_path)
+    path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
+    rows = pq.ParquetFile(path).read().to_pylist()
+    for row in rows:
+        row["local_enu_origin_offset_ns"] = 35_138_000
+    pq.write_table(pa.Table.from_pylist(rows), path)
+    samples = parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+    assert {sample.local_enu_origin_offset_ns for sample in samples} == {35_138_000}
+    assert [sample.recording_offset_ns for sample in samples] == [0, 1_000_000_000]
+    expected = tuple(
+        (rows[0]["local_enu"][key] + rows[1]["local_enu"][key]) / 2
+        for key in ("local_east_m", "local_north_m", "local_up_m")
+    )
+    assert interpolate_privacy_gnss(samples, 500_000_000).translation_xyz_m == expected
+    assert not interpolate_privacy_gnss(samples, -1).available
+
+
+def test_invalid_fix_without_attitude_remains_an_interpolation_barrier(tmp_path: Path) -> None:
+    fixture = write_decoded_fixture(tmp_path)
+    path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
+    rows = pq.ParquetFile(path).read().to_pylist()
+    rows[1].update(is_valid=False, orientation=None)
+    pq.write_table(pa.Table.from_pylist(rows), path)
+    samples = parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+    assert samples[1].local_east_m == 10.0
+    assert samples[1].roll_rad is None
+    assert not interpolate_privacy_gnss(samples, 500_000_000).available
+    assert not interpolate_privacy_gnss(samples, 1_000_000_000).available
+    rows[1]["is_valid"] = True
+    pq.write_table(pa.Table.from_pylist(rows), path)
+    with pytest.raises(StructuralExtractionError, match="orientation"):
+        parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+
+
+def test_privacy_interpolation_rejects_mixed_origins() -> None:
+    left = privacy_sample(0, local=(0.0, 0.0, 0.0), global_xy=(0.0, 0.0))
+    right = replace(left, recording_offset_ns=10, local_enu_origin_offset_ns=1)
+    with pytest.raises(StructuralExtractionError, match="origin offset"):
+        interpolate_privacy_gnss((left, right), 5)
 
 
 def test_privacy_gnss_rejects_duplicate_offsets_and_absolute_time_fields(
@@ -291,3 +333,22 @@ def test_local_translation_is_independent_of_global_context() -> None:
     assert interpolate_privacy_gnss(base, 1).translation_xyz_m == (
         interpolate_privacy_gnss(shifted, 1).translation_xyz_m
     )
+
+
+def test_invalid_fix_preserves_absent_uncertainty_without_inventing_confidence(
+    tmp_path: Path,
+) -> None:
+    fixture = write_decoded_fixture(tmp_path)
+    path = next((fixture.root / "data/tables/gnss").rglob("*.parquet"))
+    rows = pq.ParquetFile(path).read().to_pylist()
+    rows[1].update(is_valid=False, orientation=None, orientation_uncertainty=None, quality=None)
+    pq.write_table(pa.Table.from_pylist(rows), path)
+    samples = parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)
+    assert samples[1].quality is None
+    assert samples[1].orientation_uncertainty is None
+    assert samples[1].position_uncertainty is not None
+    assert not interpolate_privacy_gnss(samples, 500_000_000).available
+    rows[1].update(is_valid=True, orientation=rows[0]["orientation"])
+    pq.write_table(pa.Table.from_pylist(rows), path)
+    with pytest.raises(StructuralExtractionError, match="orientation uncertainty"):
+        parse_privacy_gnss(path, expected_recording_id=fixture.recording_id)

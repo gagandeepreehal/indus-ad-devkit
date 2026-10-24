@@ -98,6 +98,24 @@ def test_decoded_extractor_reads_production_shards_and_batch_timing(
     }
 
 
+def test_decoded_signed_batch_preroll_is_preserved_but_not_exported(tmp_path: Path) -> None:
+    fixture = write_decoded_fixture(tmp_path / "remote")
+    rewrite_as_anonymizer_layout(fixture)
+    bundle = acquire_fixture_bundle(fixture, tmp_path / "cache")
+    for artifact in bundle.entry.artifacts_of("camera_frames"):
+        path = bundle.path(artifact.path)
+        table = pq.ParquetFile(path).read()
+        rows = table.to_pylist()
+        rows[0]["batch_time_offset_ns"] = -77_419_286
+        pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
+    owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
+    assert owned.result.selected_grid.unused_batch_timestamps_ns == (-77_419_286,)
+    assert len(owned.result.samples) == len(DEFAULT_DECODED_CAMERAS)
+    assert {sample.batch_timestamp_ns for sample in owned.result.samples} == {1_000_000_000}
+    assert all(sample.grid_target_timestamp_ns >= 0 for sample in owned.result.samples)
+    assert min(batch.rec_timestamp_ns for batch in owned.result.camera_batches) == -77_419_286
+
+
 def test_decoded_extractor_supports_opt_in_tilted_camera(tmp_path: Path) -> None:
     fixture = write_decoded_fixture(tmp_path / "remote", include_tilted=True)
     cameras: list[CameraName] = [*DEFAULT_DECODED_CAMERAS, "cam_front_tilted"]
@@ -222,3 +240,26 @@ def test_decoded_extractor_rejects_corrupt_video_and_rolls_back_staging(
     with pytest.raises(StructuralExtractionError, match="video"):
         make_decoded_extractor(tmp_path).extract_owned(bundle)
     assert not tuple((tmp_path / "work").glob(f"{fixture.recording_id}-*"))
+
+
+def test_recorded_camera_clock_requires_explicit_selection_and_shared_batch_time(
+    tmp_path: Path,
+) -> None:
+    fixture = write_decoded_fixture(tmp_path / "remote")
+    rewrite_as_anonymizer_layout(fixture)
+    bundle = acquire_fixture_bundle(fixture, tmp_path / "cache")
+    for artifact in bundle.entry.artifacts_of("camera_frames"):
+        path = bundle.path(artifact.path)
+        table = pq.ParquetFile(path).read()
+        rows = table.to_pylist()
+        for row in rows:
+            row["batch_time_offset_ns"] = None
+        pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
+    with pytest.raises(StructuralExtractionError, match="batch recording offset"):
+        decoded_module._camera_rows(bundle)
+    selected = decoded_module._camera_rows(bundle, batch_time_basis="rec_time_offset_ns")
+    assert {row.batch_offset_ns for row in selected} == {0, 1_000_000_000}
+    rows[0]["rec_time_offset_ns"] += 1
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
+    with pytest.raises(StructuralExtractionError, match="differ within batch"):
+        decoded_module._camera_rows(bundle, batch_time_basis="rec_time_offset_ns")
