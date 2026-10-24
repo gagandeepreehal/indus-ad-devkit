@@ -68,7 +68,9 @@ def test_cli_help_smoke(argv: list[str], expected: str, capsys: pytest.CaptureFi
     with pytest.raises(SystemExit, match="0"):
         create_parser().parse_args(argv)
 
-    assert expected in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert output.startswith("usage: indus-ad")
+    assert expected in output
 
 
 @pytest.mark.parametrize("command", ["validate", "inspect"])
@@ -100,7 +102,7 @@ def test_build_main_returns_concise_config_diagnostics(
     error = capsys.readouterr().err
 
     assert result == 2
-    assert "dataset-devkit: error:" in error
+    assert "indus-ad: error:" in error
     assert "Traceback" not in error
     assert len(error.splitlines()) == 1
 
@@ -141,7 +143,7 @@ def test_build_main_redacts_structured_cleanup_evidence(
     assert captured.out == ""
     assert (
         captured.err
-        == "dataset-devkit: error: owned working-tree cleanup failed; "
+        == "indus-ad: error: owned working-tree cleanup failed; "
         "manual cleanup required\n"
     )
     assert "/private/operator" not in captured.err
