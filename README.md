@@ -38,15 +38,18 @@ python -m pip install -e .
 hf auth login
 cp examples/indus_ad_v21_config.json dataset_config.json
 cp examples/indus_ad_annotations.jsonl annotations.jsonl
-dataset-devkit build --config dataset_config.json
-dataset-devkit validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
-dataset-devkit inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+indus-ad build --config dataset_config.json
+indus-ad validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+indus-ad inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
 ```
 
 Expected output: **1 scene, 48 samples and 288 camera images**, with 2 joined
 camera pseudo-label rows and 4 dense references. A verified macOS build using
 cached source artifacts took about 60 seconds; cold downloads take additional time.
 See [quickstart measurements, provenance and limits](docs/quickstart-release.md).
+
+`indus-ad` is the primary CLI command. The legacy `dataset-devkit` command remains
+available as a compatibility alias for existing scripts.
 
 The commands install the current checkout. Release v0.1.2 includes the revised
 configuration. The example bundled with the immutable v0.1.1 tag differs;
@@ -150,8 +153,8 @@ Dense payloads stay in the verified cache; exported rows retain source reference
 and materialization state. Dense acquisition failures block publication.
 
 ```bash
-dataset-devkit validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
-dataset-devkit inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+indus-ad validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
+indus-ad inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
 ```
 
 These commands use the quickstart output path; adjust it if you change the configuration.

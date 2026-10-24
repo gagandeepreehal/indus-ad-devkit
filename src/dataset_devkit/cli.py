@@ -1,4 +1,4 @@
-"""Command-line interface for dataset-devkit."""
+"""Command-line interface for indus-ad."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from dataset_devkit.validation import DatasetValidationError
 def create_parser() -> argparse.ArgumentParser:
     """Create the public CLI parser."""
     parser = argparse.ArgumentParser(
-        prog="dataset-devkit",
+        prog="indus-ad",
         description="INDUS AD DEVKIT: build, validate, and inspect driving datasets.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
@@ -69,7 +69,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ValidationError,
             ConfigRootError,
         ) as error:
-            print(f"dataset-devkit: error: {_format_config_error(error)}", file=sys.stderr)
+            print(f"indus-ad: error: {_format_config_error(error)}", file=sys.stderr)
             return 2
     try:
         if args.command == "build":
@@ -112,7 +112,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(canonical_json(summary.to_dict()))
     except OwnedDirectoryCleanupError:
         print(
-            "dataset-devkit: error: owned working-tree cleanup failed; "
+            "indus-ad: error: owned working-tree cleanup failed; "
             "manual cleanup required",
             file=sys.stderr,
         )
@@ -124,7 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         DatasetValidationError,
         ValueError,
     ) as error:
-        print(f"dataset-devkit: error: {str(error).replace(chr(10), ' ')}", file=sys.stderr)
+        print(f"indus-ad: error: {str(error).replace(chr(10), ' ')}", file=sys.stderr)
         return 1
     return 0
 
