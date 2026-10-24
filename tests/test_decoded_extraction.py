@@ -45,9 +45,7 @@ def acquire_fixture_bundle(
     cameras: list[CameraName] | None = None,
 ) -> AcquiredDecodedRecording:
     acquirer = DecodedHfAcquirer(
-        source=decoded_source_config(
-            fixture.revision, [fixture.recording_id], cameras=cameras
-        ),
+        source=decoded_source_config(fixture.revision, [fixture.recording_id], cameras=cameras),
         cache_dir=cache,
         download_file=_download(fixture.root),
     )
@@ -68,17 +66,14 @@ def test_decoded_extractor_stages_six_cameras_without_mcap(tmp_path: Path) -> No
 
     owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
 
-    assert {sample.camera_name for sample in owned.result.samples} == set(
-        DEFAULT_DECODED_CAMERAS
-    )
+    assert {sample.camera_name for sample in owned.result.samples} == set(DEFAULT_DECODED_CAMERAS)
     assert len(owned.result.samples) == 12
     assert all(
         sample.ego_pose.interpolation.pose_frame == "recording_local_enu_v1"
         for sample in owned.result.samples
     )
     assert all(
-        sample.ego_pose.translation_xyz_m
-        == sample.ego_pose.interpolation.translation_xyz_m
+        sample.ego_pose.translation_xyz_m == sample.ego_pose.interpolation.translation_xyz_m
         for sample in owned.result.samples
     )
     for sample in owned.result.samples:
@@ -106,9 +101,7 @@ def test_decoded_extractor_reads_production_shards_and_batch_timing(
 def test_decoded_extractor_supports_opt_in_tilted_camera(tmp_path: Path) -> None:
     fixture = write_decoded_fixture(tmp_path / "remote", include_tilted=True)
     cameras: list[CameraName] = [*DEFAULT_DECODED_CAMERAS, "cam_front_tilted"]
-    bundle = acquire_fixture_bundle(
-        fixture, tmp_path / "cache", cameras=cameras
-    )
+    bundle = acquire_fixture_bundle(fixture, tmp_path / "cache", cameras=cameras)
 
     owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
 
@@ -149,18 +142,36 @@ def test_decoded_extractor_rejects_invalid_frame_joins(
         make_decoded_extractor(tmp_path).extract_owned(bundle)
 
 
-def test_decoded_extractor_rejects_frame_without_gnss_bracket(tmp_path: Path) -> None:
+@pytest.mark.parametrize("case", ["leading", "trailing", "invalid_source"])
+def test_decoded_extractor_retains_unavailable_pose_for_validity(tmp_path: Path, case: str) -> None:
     fixture = write_decoded_fixture(tmp_path / "remote")
     bundle = acquire_fixture_bundle(fixture, tmp_path / "cache")
     gnss = bundle.path(bundle.entry.artifact("gnss").path)
     rows = pq.ParquetFile(gnss).read().to_pylist()
-    for row in rows:
-        row["recording_offset_ns"] += 1
+    if case == "invalid_source":
+        rows[0]["is_valid"] = False
+    else:
+        for row in rows:
+            row["recording_offset_ns"] += 1 if case == "leading" else -1
     pq.write_table(pa.Table.from_pylist(rows), gnss)
 
-    with pytest.raises(StructuralExtractionError, match="GNSS interpolation bracket"):
-        make_decoded_extractor(tmp_path).extract_owned(bundle)
-    assert not tuple((tmp_path / "work").glob(f"{fixture.recording_id}-*"))
+    owned = make_decoded_extractor(tmp_path).extract_owned(bundle)
+    unavailable_time = 1_000_000_000 if case == "trailing" else 0
+    unavailable = [
+        sample for sample in owned.result.samples if sample.camera_timestamp_ns == unavailable_time
+    ]
+    assert len(unavailable) == len(DEFAULT_DECODED_CAMERAS)
+    assert all(not sample.ego_pose.available for sample in unavailable)
+    assert all(not sample.ego_pose.interpolation.available for sample in unavailable)
+    assert all(sample.ego_pose.translation_xyz_m is None for sample in unavailable)
+    assert all(sample.ego_pose.rotation_wxyz is None for sample in unavailable)
+    assert all(
+        sample.ego_pose.available
+        for sample in owned.result.samples
+        if sample.camera_timestamp_ns != unavailable_time
+    )
+    for sample in owned.result.samples:
+        verify_staged_image_identity(sample.staged_image)
 
 
 def test_decoded_extractor_reports_rollback_failure(
@@ -173,9 +184,7 @@ def test_decoded_extractor_reports_rollback_failure(
     def fail_rollback(*_args: object, **_kwargs: object) -> None:
         raise OSError("fixture rollback failure")
 
-    monkeypatch.setattr(
-        decoded_module, "rollback_staging_invocation", fail_rollback
-    )
+    monkeypatch.setattr(decoded_module, "rollback_staging_invocation", fail_rollback)
     with pytest.raises(OwnedDirectoryCleanupError):
         make_decoded_extractor(tmp_path).extract_owned(bundle)
 
