@@ -1,6 +1,6 @@
 # Camera and GNSS timing and trimming
 
-Camera extraction, synchronization, exported camera timestamps and ego-pose queries default to the camera payload `rec_timestamp`, published as `rec_time_offset_ns`. The main GNSS channel is `gnss`, using its payload `timestamp`, published as `time_offset_ns`. The devkit does not replace GNSS sensor time with logger time or combine `gnss` and `rec_gnss` into one trajectory.
+For every INDUS-AD recording, camera extraction, synchronization, frame selection, exported camera timestamps and ego-pose queries default to the camera payload `rec_timestamp`, published as `rec_time_offset_ns`. This policy also applies when the producer timestamp is present; it is not a fallback limited to missing producer timestamps. The main GNSS channel is `gnss`, using its payload `timestamp`, published as `time_offset_ns`. The devkit does not replace GNSS sensor time with logger time or combine `gnss` and `rec_gnss` into one trajectory.
 
 ```json
 {
