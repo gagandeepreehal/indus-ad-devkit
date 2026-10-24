@@ -44,8 +44,9 @@ image-quality pseudo-labels joined by `recording_id`.
 Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/8983a2b9852d7109b97c5c29dd0482fa9e7e92bb/README.md),
 checked 16 October 2026. Its `train` split is a storage/API label, not an authored benchmark split.
 The devkit creates its own derived train/test split. Dataset access requires manual approval;
-the publisher approved the privacy/access decision on 23 October 2026. Final dataset
-launch approval remains pending; see the [current dataset privacy policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
+the publisher handles privacy concerns and recording withdrawals manually through
+[indus-ad@gagandeepreehal.com](mailto:indus-ad@gagandeepreehal.com). See the
+[current dataset privacy policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
 
 ![INDUS-AD video, GNSS and motion, pseudo-labels, and dense semantic/depth layers joined by recording ID](docs/assets/indus-ad-dataset-layers.png)
 
