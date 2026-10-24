@@ -81,7 +81,7 @@ image-quality pseudo-labels joined by `recording_id`.
 | Camera positions | Six surround cameras; tilted-front video in 1,113 recordings |
 | Sampled camera annotation rows | 34,306; not labels for every video frame |
 
-Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/8983a2b9852d7109b97c5c29dd0482fa9e7e92bb/README.md),
+Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/592780554157eb2b38eec1bbba9bb498da5878bb/README.md),
 checked 16 October 2026. Its `train` split is a storage/API label, not an authored benchmark split.
 The devkit creates its own derived train/test split. Dataset access requires manual approval;
 the publisher handles privacy concerns and recording withdrawals manually through

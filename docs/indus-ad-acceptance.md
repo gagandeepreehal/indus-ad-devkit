@@ -50,3 +50,5 @@ The checked-in design and implementation plan are historical planning documents.
 Use this acceptance note and `docs/indus-ad.md` for the implemented behavior and its
 verification limits. Source repositories and the user's main checkout were not
 published or replaced by this work.
+
+This note preserves a historical inspection. Current acquisition examples use the consolidated source revision in `examples/indus_ad_v21_config.json`; original identifiers and file hashes above are retained as provenance.
