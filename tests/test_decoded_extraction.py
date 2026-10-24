@@ -16,6 +16,7 @@ from dataset_devkit.decoded_acquisition import (
 )
 from dataset_devkit.extraction import decoded as decoded_module
 from dataset_devkit.extraction.decoded import DecodedRecordingExtractor
+from dataset_devkit.extraction.decoded_gnss import PrivacyGnssSample
 from dataset_devkit.extraction.errors import StructuralExtractionError
 from dataset_devkit.extraction.staging import verify_staged_image_identity
 from dataset_devkit.publication import OwnedDirectoryCleanupError
@@ -278,4 +279,5 @@ def test_untimed_gnss_start_is_trimmed_without_rejecting_recording(tmp_path: Pat
     assert len(owned.result.samples) == len(DEFAULT_DECODED_CAMERAS)
     assert {s.camera_timestamp_ns for s in owned.result.samples} == {1_000_000_000}
     assert owned.result.selected_grid.unused_batch_timestamps_ns == (0,)
+    assert isinstance(owned.result.gnss_samples[0], PrivacyGnssSample)
     assert owned.result.gnss_samples[0].untimed_messages_before == 1
