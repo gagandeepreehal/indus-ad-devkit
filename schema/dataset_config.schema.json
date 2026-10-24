@@ -972,7 +972,7 @@
           "title": "Calibrated Ego Frame"
         },
         "camera_batch_time_basis": {
-          "default": "batch_time_offset_ns",
+          "default": "rec_time_offset_ns",
           "enum": [
             "batch_time_offset_ns",
             "rec_time_offset_ns"
@@ -1029,7 +1029,7 @@
               "type": "null"
             }
           ],
-          "default": null,
+          "default": "gnss",
           "title": "Gnss Channel"
         },
         "gnss_time_basis": {
@@ -1046,7 +1046,7 @@
               "type": "null"
             }
           ],
-          "default": null,
+          "default": "time_offset_ns",
           "title": "Gnss Time Basis"
         },
         "intrinsic_image_transform": {

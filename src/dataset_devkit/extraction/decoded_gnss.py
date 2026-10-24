@@ -7,6 +7,7 @@ import json
 import math
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -284,6 +285,7 @@ def parse_privacy_gnss(
     samples: list[PrivacyGnssSample] = []
     recording_id: str | None = None
     recording_origin: int | None = None
+    pending_untimed = 0
     for row in rows:
         _reject_absolute_fields(row)
         row_recording_id = row.get("recording_id")
@@ -305,6 +307,15 @@ def parse_privacy_gnss(
             recording_origin = origin
         elif origin != recording_origin:
             raise StructuralExtractionError("privacy GNSS local ENU origin offset changes")
+        if row.get("recording_offset_ns") is None and not is_valid:
+            # Retain the gap in source order without assigning a sensor time.
+            pending_untimed += 1
+            if samples:
+                samples[-1] = replace(
+                    samples[-1],
+                    untimed_messages_after=samples[-1].untimed_messages_after + 1,
+                )
+            continue
         coordinate_fields = ("local_enu", "enu", "lat_lon_ht", "published_horizontal_resolution_m")
         if not is_valid and any(row.get(field) is None for field in coordinate_fields):
             if any(row.get(field) is not None for field in coordinate_fields):
@@ -337,8 +348,10 @@ def parse_privacy_gnss(
                     quality=_diagnostic_mapping(row.get("quality"), "quality", is_valid=is_valid),
                     local_enu_origin_offset_ns=origin,
                     published_horizontal_resolution_m=None,
+                    untimed_messages_before=pending_untimed,
                 )
             )
+            pending_untimed = 0
             continue
         local = _mapping(row.get("local_enu"), "local ENU")
         # Invalid fixes remain timed interpolation barriers even if the receiver
@@ -394,8 +407,12 @@ def parse_privacy_gnss(
                 quality=_diagnostic_mapping(row.get("quality"), "quality", is_valid=is_valid),
                 local_enu_origin_offset_ns=origin,
                 published_horizontal_resolution_m=resolution,
+                untimed_messages_before=pending_untimed,
             )
         )
+        pending_untimed = 0
+    if not samples:
+        raise StructuralExtractionError("privacy GNSS has no timestamped samples")
     offsets = tuple(sample.recording_offset_ns for sample in samples)
     if any(current <= previous for previous, current in zip(offsets, offsets[1:], strict=False)):
         raise StructuralExtractionError(
@@ -448,6 +465,11 @@ def interpolate_privacy_gnss(
         fraction = (recording_offset_ns - before.recording_offset_ns) / (
             after.recording_offset_ns - before.recording_offset_ns
         )
+
+    if before is not after and (
+        before.untimed_messages_after or after.untimed_messages_before
+    ):
+        return _unavailable(recording_offset_ns, before, after)
 
     required = (
         before.local_east_m,

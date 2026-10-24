@@ -2,7 +2,7 @@
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Devkit checks](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gagandeepreehal/indus-ad-devkit/actions/workflows/ci.yml)
-[![Release: v0.1.1 alpha prerelease](https://img.shields.io/badge/release-v0.1.1%20alpha%20prerelease-orange)](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
+[![Release: v0.1.2 alpha prerelease](https://img.shields.io/badge/release-v0.1.2%20alpha%20prerelease-orange)](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.2)
 ![Platform: Linux and macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE.md)
 
@@ -48,10 +48,10 @@ camera pseudo-label rows and 4 dense references. A verified macOS build using
 cached source artifacts took about 60 seconds; cold downloads take additional time.
 See [quickstart measurements, provenance and limits](docs/quickstart-release.md).
 
-The commands install the current checkout. The verified production run used the
-[v0.1.1 wheel](https://github.com/gagandeepreehal/indus-ad-devkit/releases/tag/v0.1.1)
-with the **newer example configuration now on `main`**. The example bundled with
-the immutable v0.1.1 tag differs; use the configuration from this checkout.
+The commands install the current checkout. Release v0.1.2 includes the revised
+configuration. The example bundled with the immutable v0.1.1 tag differs;
+use the configuration from this release. See the verification guide for the
+original measurements and the current production acceptance results.
 
 The mandatory official nuScenes loader check depends on NumPy <2;
 Python 3.13/3.14 are unsupported until that dependency chain is compatible.
@@ -183,6 +183,9 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 | Guide | Contents |
 | --- | --- |
 | [Quickstart verification](docs/quickstart-release.md) | Measured download, disk, runtime, and release provenance |
+| [Troubleshooting](docs/troubleshooting.md) | Access, supported Python, source-layout errors, selection and disk usage |
+| [Source compatibility](docs/source-compatibility.md) | Per-recording metadata acceptance and unsupported layouts |
+| [Production validation](docs/launch-validation.md) | Five representative six-camera build results |
 | [Annotation coverage](docs/annotation-coverage.md) | Sparse pseudo-label coverage and exact joins |
 | [Integrated INDUS-AD](docs/indus-ad.md) | Annotation layers, joins, dense references, and companion GNSS |
 | [Published sensor acceptance](docs/published-sensor-acceptance.md) | Corrected calibration/GNSS compatibility and verification limits |
@@ -193,18 +196,25 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 | [Selection](docs/selection.md) | Features, filters, quotas, and splitting |
 | [Export and SDK](docs/export.md) | Tables, extensions, validation, and publication |
 
+## Camera timing and partial recordings
+
+Cameras use payload **`rec_timestamp`** (`rec_time_offset_ns`) by default for
+synchronization and exported timestamps. Main **`gnss`** uses its sensor
+**`timestamp`** (`time_offset_ns`), preserving the original mz-datagen convention.
+Untimed quality-flagged GNSS messages mark excluded gaps rather than causing
+whole-recording rejection. Affected leading portions are trimmed from the export;
+internal gaps are excluded and usable portions remain eligible. Original files
+and retained timestamps stay unchanged. See [exact fields and trimming policy](docs/timing-and-trimming.md).
+
 ## Limitations
 
 - Camera, calibration, and GNSS inputs are supported; LiDAR ingestion is not.
 - Inputs must follow a supported source contract. Arbitrary repositories and symbolic revisions are rejected.
 - `v1.0-trainval` is the only publication version. Windows is unsupported.
-- Some source-table variants (missing/signed producer batch offsets or nonzero
-  local-ENU origin offsets) are outside the current supported contract and are
-  rejected. The bounded quickstart is selected by actual sensor-table preflight.
-- The corrected calibration and selected GNSS parsers have been checked against one
-  production recording's tables. The bounded quickstart has now passed a real-video
-  build on macOS; Linux/macOS CI also covers synthetic/offline exports. Other
-  recordings and a production GNSS companion release remain unverified.
+- Metadata acceptance does not guarantee a usable scene. Quality thresholds and
+  minimum scene lengths still apply after trimming untimed GNSS portions.
+- Production validation is bounded to selected recordings on macOS. Linux/macOS
+  CI covers offline exports; full-corpus video decoding has not been performed.
 
 ## Development
 

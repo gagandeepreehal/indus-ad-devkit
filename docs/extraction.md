@@ -198,9 +198,13 @@ unexpected video frame counts, invalid local ENU, unsanitized global coordinates
 mutation. A decoded structural or privacy failure is never retried through MCAP.
 
 The integrated source accepts an explicit `camera_batch_time_basis` selection.
-Its default is `batch_time_offset_ns`; `rec_time_offset_ns` uses the existing
+Its default is `rec_time_offset_ns`, which uses the existing
 recorded-camera clock for every frame in the build, requiring the same offset
 within each source channel and message index. It does not fill missing producer
 timestamps or switch clocks row by row. Source timestamps remain unchanged.
 Missing diagnostics on quality-flagged GNSS samples are retained as null, including
 uncertainty and quality details; those samples cannot supply interpolated poses.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

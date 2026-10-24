@@ -352,6 +352,7 @@ class IndusAdHfAcquirer:
             ),
         )
         frame_evidence: dict[tuple[str, int, int], tuple[int, int]] = {}
+        export_offsets: dict[tuple[str, str, int, int], int] = {}
         for artifact in entry.artifacts_of("camera_frames"):
             for row in pq.ParquetFile(files[artifact.path]).read().to_pylist():
                 camera_name = row.get("camera_name", row.get("source_camera_name"))
@@ -363,6 +364,11 @@ class IndusAdHfAcquirer:
                 if key in frame_evidence:
                     raise AcquisitionError("camera frame evidence contains duplicate identities")
                 frame_evidence[key] = (int(row["width"]), int(row["height"]))
+                if self.source.camera_batch_time_basis == "rec_time_offset_ns":
+                    export_offset = row.get("recording_offset_ns", row.get("rec_time_offset_ns"))
+                    if not isinstance(export_offset, int) or isinstance(export_offset, bool):
+                        raise AcquisitionError("recorded-camera timestamp is missing")
+                    export_offsets[(entry.recording_id, *key)] = export_offset
         selected_cameras = {video.camera for video in entry.videos}
         camera_annotations = tuple(
             item
@@ -390,6 +396,7 @@ class IndusAdHfAcquirer:
                 if item.recording_id == entry.recording_id
             ),
             availability=self._annotations.availability,
+            camera_export_offsets=export_offsets,
         )
         companion = self.source.gnss_annotation_source
         if companion is not None:

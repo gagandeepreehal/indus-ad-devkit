@@ -80,3 +80,7 @@ this alpha release. Dependencies are not bypassed and the SDK check is not disab
 CI runs the complete tests, strict type/lint checks, schema regeneration,
 package builds and an installed-wheel offline export on Linux and macOS with
 Python 3.12. Local macOS results and remote CI results must be reported separately.
+
+## Current integrated timing and trimming policy
+
+Camera timing defaults to `rec_time_offset_ns`; main `gnss` uses `time_offset_ns`. Untimed quality-flagged GNSS messages define excluded portions, with leading portions trimmed from exports rather than rejecting an otherwise usable recording. Original source and annotation identities remain unchanged. See [exact fields, gap handling and verification limits](timing-and-trimming.md). Historical measurements above retain their original configuration and do not establish this newer policy.

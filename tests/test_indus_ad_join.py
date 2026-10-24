@@ -103,6 +103,20 @@ def test_join_binds_exact_selected_camera_dense_and_gnss_rows(
     assert joined.gnss[0].scene_tokens == (graph.scenes[0].token,)
     assert joined.audits[0].camera_joined == 1
     assert joined.audits[0].dense_materialized == 0
+    # Keep immutable label/dense source identities while exporting recorder time.
+    shifted_camera = replace(camera, recording_offset_ns=camera.recording_offset_ns + 123)
+    shifted_dense = tuple(replace(ref, recording_offset_ns=ref.recording_offset_ns + 123)
+                          for ref in dense)
+    shifted_bundle = IndusAdAnnotationBundle(
+        (shifted_camera,), (gnss,), shifted_dense,
+        camera_export_offsets={shifted_camera.source_frame_identity: sample_data.timestamp_ns},
+    )
+    shifted_join = join_indus_ad_annotations(
+        graph=graph, selected_scene_tokens=selected, annotations=shifted_bundle
+    )
+    assert shifted_join.camera[0].sample_data_token == sample_data.token
+    assert shifted_join.camera[0].annotation.recording_offset_ns == camera.recording_offset_ns + 123
+    assert len(shifted_join.dense) == len(dense)
 
 
 def test_join_excludes_annotations_outside_selected_scenes(
