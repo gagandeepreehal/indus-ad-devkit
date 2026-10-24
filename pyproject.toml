@@ -51,6 +51,7 @@ dev = [
 ]
 
 [project.scripts]
+indus-ad = "dataset_devkit.cli:main"
 dataset-devkit = "dataset_devkit.cli:main"
 
 [tool.pytest.ini_options]

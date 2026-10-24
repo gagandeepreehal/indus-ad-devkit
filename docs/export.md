@@ -110,8 +110,8 @@ independently of the producing process.
 Run validation and deterministic read-only inspection with:
 
 ```bash
-dataset-devkit validate --dataroot DATASET --version v1.0-trainval
-dataset-devkit inspect --dataroot DATASET --version v1.0-trainval
+indus-ad validate --dataroot DATASET --version v1.0-trainval
+indus-ad inspect --dataroot DATASET --version v1.0-trainval
 ```
 
 Inspection reports official table and image counts, normalized camera channels, recording and

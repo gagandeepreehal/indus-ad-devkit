@@ -3,7 +3,7 @@
 Copy `examples/indus_ad_v21_config.json` to `dataset_config.json` and the empty
 `examples/indus_ad_annotations.jsonl` to `annotations.jsonl` in your working
 directory. Review the recording/split selection, cameras, scene rules,
-quotas, and output paths before running `dataset-devkit build --config CONFIG`.
+quotas, and output paths before running `indus-ad build --config CONFIG`.
 
 Schema `2.1` selects `source.type: "indus_ad_hf"` and
 `contract: "indus_ad_integrated_v1"`. The [example configuration](../examples/indus_ad_v21_config.json)
