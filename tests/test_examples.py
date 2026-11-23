@@ -51,7 +51,8 @@ def test_readme_distinguishes_raw_and_privacy_transformed_sources() -> None:
 
     assert "restricted raw" in readme.casefold()
     assert "recording-local ENU" in readme
-    assert "does not independently rerun the anonymizer" in readme
+    assert "Manifest verification checks file integrity and published evidence." in readme
+    assert "Anonymization happens before publication." in readme
 
 
 def test_indus_ad_quickstart_selects_one_eligible_scene(feature_factory: FeatureFactory) -> None:

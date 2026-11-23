@@ -82,7 +82,7 @@ All sources require an exact repository ID and a full 40-character commit SHA.
 | Older decoded V2 layout | `2.0`, `decoded_hf` | [decoded_v2_config.json](examples/decoded_v2_config.json) |
 | Original MCAP | `1.0`, `mcap_hf` | [dataset_config.json](examples/dataset_config.json) |
 
-The devkit marks INDUS-AD and decoded V2 as `privacy_transformed` and original MCAP as `restricted_raw`. Manifest checks verify file integrity.
+The devkit marks INDUS-AD and decoded V2 as `privacy_transformed` and original MCAP as restricted raw (`restricted_raw`). Manifest verification checks file integrity and published evidence. Anonymization happens before publication.
 
 ## Configure a subset
 
