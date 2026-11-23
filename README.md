@@ -38,7 +38,7 @@ The example exports 1 scene, 48 samples, and 288 camera images, with 2 joined ps
 
 Use `indus-ad` for new commands. Existing scripts can still use `dataset-devkit`.
 
-The commands install the current checkout. The example configuration is also available in v0.1.2.
+Use the example configuration from the current checkout.
 
 The official nuScenes loader requires NumPy <2.
 
