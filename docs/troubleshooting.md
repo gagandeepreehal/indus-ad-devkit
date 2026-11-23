@@ -2,10 +2,9 @@
 
 ## Access denied or gated repository
 
-Request access on the dataset's Hugging Face page and wait for manual review.
-There is no fixed turnaround. Sign in locally with `hf auth login` using the
-approved account. Do not paste access tokens into issues or configuration files.
-Repository visibility and approval to download gated files are separate.
+Request access on the dataset's Hugging Face page. Once approved, run
+`hf auth login` with the approved account. Keep access tokens out of issues
+and configuration files.
 
 ## Python or NumPy installation failures
 
