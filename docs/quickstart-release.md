@@ -2,7 +2,7 @@
 
 ## Current release
 
-Version 0.1.2 includes the revised example, pinned to `592780554157eb2b38eec1bbba9bb498da5878bb`. See [current production validation](launch-validation.md) and [source compatibility](source-compatibility.md). The measurements below preserve the original v0.1.1 run and its historical source identifier; they are not new download pins.
+Use the [example configuration on main](../examples/indus_ad_v21_config.json) for downloads. The measurements below describe the original v0.1.1 run.
 
 ## Historical bounded build measurement
 
