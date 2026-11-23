@@ -6,26 +6,17 @@
 ![Platform: Linux and macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE.md)
 
-Build reproducible, nuScenes-compatible subsets from INDUS-AD driving datasets.
-The devkit selects camera frames and driving scenes, interpolates GNSS poses,
-applies scenario quotas, and exports validated train/test splits with provenance.
+Build nuScenes-compatible subsets from INDUS-AD. Select camera frames and scenes, interpolate GNSS poses, and export train/test splits with source and selection records.
 
-Integrated INDUS-AD support includes camera, semantic, depth, weather, and optional
-GNSS weak pseudo-labels. These model outputs remain separate from human labels.
+Exports keep model-generated labels separate from human annotations.
 
-> Compatibility refers to the nuScenes file structure and supported loader behavior.
-> This project is independent of Motional and does not reproduce the nuScenes
-> sensor suite, annotations, maps, or benchmarks.
+The devkit uses the nuScenes file structure and supports the official loader.
 
 ## Quickstart
 
-Requires Python 3.12 (`>=3.12,<3.13`) and Linux or macOS. First request access to
-[INDUS-AD on Hugging Face](https://huggingface.co/datasets/gagandeepreehal/indus-ad)
-and wait for approval. Keep credentials out of configuration files.
+Use Python 3.12 on Linux or macOS. Request [INDUS-AD access on Hugging Face](https://huggingface.co/datasets/gagandeepreehal/indus-ad) before running the example.
 
-The example downloads about **209 MB / 199 MiB** of source artifacts. Allow a
-**2 GiB working budget plus the Python environment**; installation and network
-overhead are additional. Dense semantic/depth archives are disabled.
+Allow about 209 MB for downloads and 2 GiB of working space, plus the Python environment. The example skips dense semantic and depth archives.
 
 Run from a fresh checkout:
 
@@ -43,32 +34,23 @@ indus-ad validate --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-
 indus-ad inspect --dataroot var/indus-ad-datasets/v1.0-trainval --version v1.0-trainval
 ```
 
-Expected output: **1 scene, 48 samples and 288 camera images**, with 2 joined
-camera pseudo-label rows and 4 dense references. A verified macOS build using
-cached source artifacts took about 60 seconds; cold downloads take additional time.
-See [quickstart measurements, provenance and limits](docs/quickstart-release.md).
+The example exports 1 scene, 48 samples, and 288 camera images, with 2 joined pseudo-label rows and 4 dense references. A cached macOS build took about 60 seconds. See the [quickstart measurements](docs/quickstart-release.md).
 
-`indus-ad` is the primary CLI command. The legacy `dataset-devkit` command remains
-available as a compatibility alias for existing scripts.
+Use `indus-ad` for new commands. Existing scripts can still use `dataset-devkit`.
 
-The commands install the current checkout. Release v0.1.2 includes the revised
-configuration. The example bundled with the immutable v0.1.1 tag differs;
-use the configuration from this release. See the verification guide for the
-original measurements and the current production acceptance results.
+The commands install the current checkout. The example configuration is also available in v0.1.2.
 
-The mandatory official nuScenes loader check depends on NumPy <2;
-Python 3.13/3.14 are unsupported until that dependency chain is compatible.
+The official nuScenes loader requires NumPy <2.
 
 ## Source dataset
 
 ![Publisher-provided example of six camera perspectives in Bengaluru traffic](docs/assets/indus-ad-surround-view.png)
 
-*Illustrative surround view from the INDUS-AD dataset card; not a calibrated camera-layout diagram
-or independent evidence of anonymization performance. [Image source and license](docs/assets/SOURCES.md).*
+*Six camera views from Bengaluru. [Image source and license](docs/assets/SOURCES.md).*
 
 ![Seven-camera and Ouster OS1-128 LiDAR configuration](docs/assets/car_seven_cameras_lidar_corrected.png)
 
-Seven-camera and Ouster OS1-128 LiDAR configuration. Camera positions and orientations are plotted from supplied parameters; vehicle silhouette is illustrative, and LiDAR positioning is estimated and unverified.
+*Seven-camera rig and Ouster OS1-128 LiDAR mount. Use the dataset calibration tables for projection.*
 
 [INDUS-AD on Hugging Face](https://huggingface.co/datasets/gagandeepreehal/indus-ad)
 contains multi-camera driving recordings from Bengaluru, India, with camera timing,
@@ -80,20 +62,15 @@ image-quality pseudo-labels joined by `recording_id`.
 | Recordings | 1,469 |
 | Camera videos | 9,927 MP4s |
 | Recording timeline (longest camera per recording) | 85.31 hours |
-| Summed camera-view duration | 588.57 hours across cameras, not distinct driving hours |
+| Summed camera-view duration | 588.57 hours summed across cameras |
 | Camera positions | Six surround cameras; tilted-front video in 1,113 recordings |
-| Sampled camera annotation rows | 34,306; not labels for every video frame |
+| Sampled camera annotation rows | 34,306 |
 
-Figures come from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/592780554157eb2b38eec1bbba9bb498da5878bb/README.md),
-checked 16 October 2026. Its `train` split is a storage/API label, not an authored benchmark split.
-The devkit creates its own derived train/test split. Dataset access requires manual approval;
-the publisher handles privacy concerns and recording withdrawals manually through
-[indus-ad@gagandeepreehal.com](mailto:indus-ad@gagandeepreehal.com). See the
-[current dataset privacy policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
+Source counts are from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/592780554157eb2b38eec1bbba9bb498da5878bb/README.md). The devkit creates its own train/test split. See the [dataset privacy and takedown policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
 
 ![INDUS-AD video, GNSS and motion, pseudo-labels, and dense semantic/depth layers joined by recording ID](docs/assets/indus-ad-dataset-layers.png)
 
-*Publisher-provided dataset-layer diagram. [Image source and license](docs/assets/SOURCES.md).*
+*[Dataset layers and image attribution](docs/assets/SOURCES.md).*
 
 ## Choose a source
 
@@ -105,30 +82,17 @@ All sources require an exact repository ID and a full 40-character commit SHA.
 | Older decoded V2 layout | `2.0`, `decoded_hf` | [decoded_v2_config.json](examples/decoded_v2_config.json) |
 | Original MCAP | `1.0`, `mcap_hf` | [dataset_config.json](examples/dataset_config.json) |
 
-INDUS-AD and decoded V2 are classified as `privacy_transformed`; original MCAP is
-restricted raw (`restricted_raw`) and carries no anonymization claim. Manifest verification
-checks published evidence and integrity; it does not independently rerun the anonymizer.
+The devkit marks INDUS-AD and decoded V2 as `privacy_transformed` and original MCAP as `restricted_raw`. Manifest checks verify file integrity.
 
 ## Configure a subset
 
-The example pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36`
-and selects recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`.
-It selects exactly one eligible scene through an explicit `quickstart` quota of 1;
-an empty scenario-rules list selects no scenes. Dense archives are disabled.
+The quickstart pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36` and recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`. The `quickstart` quota selects one eligible scene. An empty scenario-rules list selects zero scenes.
 
-The human annotation file is optional input content but must exist at its configured
-path. The INDUS-AD template is empty and supplies no invented human labels.
-The legacy MCAP and decoded V2 examples use placeholder repository IDs and all-zero
-revisions; replace both with a source matching the corresponding contract.
+Create the annotation file at the configured path. It can be empty. For MCAP or decoded V2, replace the example repository IDs and all-zero revisions with your source.
 
-The pipeline verifies selected artifacts, samples frames, builds scenes, applies
-filters and seeded scenario quotas, and assigns train/test splits. Strict quota
-shortfalls fail the build. For transformed sources, trajectories and motion features
-use precise recording-local ENU; rounded global coordinates provide context only.
+The build checks source artifacts and applies filters, strict quotas, and seeded splits. Motion features for decoded sources use recording-local ENU coordinates.
 
-See [measured annotation coverage and exact-join examples](docs/annotation-coverage.md).
-A regular sampling grid can retain no labels from a sparsely annotated recording;
-inspect the export contract's `join_audit` before using it for supervision.
+Camera labels are sparse. Check `join_audit` for labels retained after frame sampling. See the [coverage and join guide](docs/annotation-coverage.md).
 
 Six untilted cameras are selected by default; `cam_front_tilted` is optional. Dense
 semantic/depth payloads are metadata-only by default. `selected_frames` modes require
@@ -201,15 +165,7 @@ See the [SDK guide](docs/export.md) for annotation lookups, splits, and audit ac
 
 ## Camera timing and partial recordings
 
-For every INDUS-AD recording, cameras use payload **`rec_timestamp`**
-(`rec_time_offset_ns`) by default for synchronization, frame selection, ego-pose
-queries and exported timestamps. This applies even when the producer timestamp is
-present; it is not a fallback limited to recordings with missing producer time. Main **`gnss`** uses its sensor
-**`timestamp`** (`time_offset_ns`), preserving the original synchronization convention.
-Untimed quality-flagged GNSS messages mark excluded gaps rather than causing
-whole-recording rejection. Affected leading portions are trimmed from the export;
-internal gaps are excluded and usable portions remain eligible. Original files
-and retained timestamps stay unchanged. See [exact fields and trimming policy](docs/timing-and-trimming.md).
+The devkit uses camera `rec_timestamp` (`rec_time_offset_ns`) for frame selection, synchronization, pose queries, and export. Main GNSS uses sensor `timestamp` (`time_offset_ns`). Untimed, quality-flagged GNSS messages mark gaps. The export trims leading gaps and skips internal gaps while preserving valid timestamps. See the [timing and trimming guide](docs/timing-and-trimming.md).
 
 ## Limitations
 
