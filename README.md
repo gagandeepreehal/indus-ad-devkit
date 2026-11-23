@@ -66,7 +66,7 @@ image-quality pseudo-labels joined by `recording_id`.
 | Camera positions | Six surround cameras; tilted-front video in 1,113 recordings |
 | Sampled camera annotation rows | 34,306 |
 
-Source counts are from the [dataset card snapshot](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/592780554157eb2b38eec1bbba9bb498da5878bb/README.md). The devkit creates its own train/test split. See the [dataset privacy and takedown policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
+Source counts are from the [INDUS-AD dataset card](https://huggingface.co/datasets/gagandeepreehal/indus-ad). The devkit creates its own train/test split. See the [dataset privacy and takedown policy](https://huggingface.co/datasets/gagandeepreehal/indus-ad/blob/main/collateral/DATASET_PRIVACY_AND_TAKEDOWN.md).
 
 ![INDUS-AD video, GNSS and motion, pseudo-labels, and dense semantic/depth layers joined by recording ID](docs/assets/indus-ad-dataset-layers.png)
 
@@ -86,7 +86,7 @@ The devkit marks INDUS-AD and decoded V2 as `privacy_transformed` and original M
 
 ## Configure a subset
 
-The quickstart pins dataset revision `ee0e1754964f6af000625fb42d854565b39fec36` and recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`. The `quickstart` quota selects one eligible scene. An empty scenario-rules list selects zero scenes.
+The quickstart selects recording `17-58-38.892-1cafd700d18c4a09a1f9db053c7933c1`. The `quickstart` quota selects one eligible scene. An empty scenario-rules list selects zero scenes.
 
 Create the annotation file at the configured path. It can be empty. For MCAP or decoded V2, replace the example repository IDs and all-zero revisions with your source.
 
